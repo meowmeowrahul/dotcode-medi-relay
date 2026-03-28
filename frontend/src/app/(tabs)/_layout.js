@@ -98,7 +98,7 @@ function CustomDrawerContent(props) {
       </View>
 
       <View style={styles.drawerItems}>
-        {session.user?.role !== 'patient' ? (
+        {user?.role !== 'patient' ? (
           <DrawerItem
             label={() => <DrawerLabel title="Issuer" subtitle="Create handoff" />}
             onPress={() => props.navigation.navigate('index')}

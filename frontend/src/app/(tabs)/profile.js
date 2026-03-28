@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -28,16 +28,47 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+  const hasLoadedProfile = useRef(false);
+  const authUserRef = useRef(user || null);
 
   useEffect(() => {
     setProfile(user || null);
     setDraft(user || null);
+    authUserRef.current = user || null;
   }, [user]);
 
   useEffect(() => {
+    if (hasLoadedProfile.current) {
+      return;
+    }
+
     let mounted = true;
 
+    const mergeProfile = (apiProfile, authUser) => {
+      const safeApi = apiProfile || {};
+      const safeAuth = authUser || {};
+      const stableRole = safeAuth.role || authUserRef.current?.role || 'patient';
+
+      const displayName =
+        safeAuth.name ||
+        safeAuth.username ||
+        safeApi.name ||
+        safeApi.username ||
+        '';
+
+      return {
+        ...safeApi,
+        ...safeAuth,
+        name: displayName,
+        username: safeAuth.username || safeApi.username,
+        role: stableRole,
+        hospitalName: safeAuth.hospitalName ?? safeApi.hospitalName ?? '',
+        profileImage: safeApi.profileImage || safeAuth.profileImage || '',
+      };
+    };
+
     const loadProfile = async () => {
+      hasLoadedProfile.current = true;
       setLoading(true);
       setError(null);
       const result = await getUserProfile();
@@ -50,7 +81,7 @@ export default function ProfileScreen() {
         return;
       }
 
-      const next = result.data;
+      const next = mergeProfile(result.data, authUserRef.current);
       setProfile(next);
       setDraft(next);
       await saveAuth(token, next);
@@ -64,11 +95,11 @@ export default function ProfileScreen() {
   }, [saveAuth, token]);
 
   const initials = useMemo(() => {
-  const name = profile?.name || profile?.username || '';
+    const name = profile?.name || profile?.username || '';
     if (!name) return 'U';
     const parts = name.trim().split(/\s+/).slice(0, 2);
     return parts.map((part) => part[0]?.toUpperCase() || '').join('') || 'U';
-  }, [profile?.name]);
+  }, [profile?.name, profile?.username]);
 
   const isDoctor = (draft?.role || profile?.role) === 'doctor';
 
@@ -104,7 +135,8 @@ export default function ProfileScreen() {
   };
 
   const validate = () => {
-    if (!draft?.name || !draft.name.trim()) {
+    const draftName = (draft?.name || draft?.username || '').trim();
+    if (!draftName) {
       setError('Name cannot be empty.');
       return false;
     }
@@ -118,8 +150,8 @@ export default function ProfileScreen() {
     setError(null);
 
     const payload = {
-      name: draft.name.trim(),
-      role: draft.role,
+      name: (draft.name || draft.username || '').trim(),
+      role: authUserRef.current?.role || profile?.role || 'patient',
       hospitalName: isDoctor ? (draft.hospitalName || '').trim() : '',
       profileImage: draft.profileImage || '',
     };
@@ -132,9 +164,16 @@ export default function ProfileScreen() {
       return;
     }
 
-    setProfile(result.data);
-    setDraft(result.data);
-    await saveAuth(token, result.data);
+    const next = {
+      ...result.data,
+      role: authUserRef.current?.role || profile?.role || 'patient',
+      username: authUserRef.current?.username || result.data?.username,
+      name: result.data?.name || draft.name || authUserRef.current?.name || authUserRef.current?.username,
+    };
+
+    setProfile(next);
+    setDraft(next);
+    await saveAuth(token, next);
     setIsEditing(false);
     Alert.alert('Success', 'Profile updated successfully.');
   };
@@ -204,7 +243,7 @@ export default function ProfileScreen() {
             <TextInput
               style={[styles.input, !isEditing && styles.inputReadOnly]}
               editable={isEditing && !saving && !deleting}
-              value={current.name || ''}
+              value={current.name || current.username || ''}
               onChangeText={(value) => setDraft((prev) => ({ ...prev, name: value }))}
               placeholder="Enter your full name"
               placeholderTextColor={Colors.textSecondary}

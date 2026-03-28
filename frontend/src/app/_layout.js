@@ -1,11 +1,34 @@
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { Colors } from '../constants/Theme';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
 // Prevent the splash screen from auto-hiding so we can control it
 SplashScreen.preventAutoHideAsync();
+
+function AuthGate({ children }) {
+  const { token, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+  const navState = useRootNavigationState();
+
+  const inAuthFlow = segments[0] === 'login' || segments[0] === 'register';
+
+  useEffect(() => {
+    if (loading || !navState?.key) return;
+    if (!token && !inAuthFlow) {
+      router.replace('/login');
+    }
+    if (token && inAuthFlow) {
+      router.replace('/(tabs)');
+    }
+  }, [token, loading, inAuthFlow, router, navState?.key]);
+
+  if (loading || !navState?.key) return null;
+  return children;
+}
 
 export default function RootLayout() {
   useEffect(() => {
@@ -14,40 +37,44 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: Colors.primary,
-          },
-          headerTintColor: Colors.surface,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="transfer/[id]" 
-          options={{ title: 'Patient Handoff Record', headerBackTitle: 'Back' }} 
-        />
-        <Stack.Screen 
-          name="scanner" 
-          options={{ 
-            headerShown: false,
-            presentation: 'fullScreenModal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen 
-          name="scan-result" 
-          options={{ 
-            title: 'Patient Transfer Record',
-            headerBackTitle: 'Back',
-          }} 
-        />
-      </Stack>
-    </>
+    <AuthProvider>
+      <AuthGate>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: Colors.primary,
+            },
+            headerTintColor: Colors.surface,
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        >
+          <Stack.Screen name="login" options={{ title: 'Login', headerShown: true, headerBackVisible: false }} />
+          <Stack.Screen name="register" options={{ title: 'Register', headerShown: true }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="transfer/[id]" 
+            options={{ title: 'Patient Handoff Record', headerBackTitle: 'Back' }} 
+          />
+          <Stack.Screen 
+            name="scanner" 
+            options={{ 
+              headerShown: false,
+              presentation: 'fullScreenModal',
+              animation: 'slide_from_bottom',
+            }} 
+          />
+          <Stack.Screen 
+            name="scan-result" 
+            options={{ 
+              title: 'Patient Transfer Record',
+              headerBackTitle: 'Back',
+            }} 
+          />
+        </Stack>
+      </AuthGate>
+    </AuthProvider>
   );
 }

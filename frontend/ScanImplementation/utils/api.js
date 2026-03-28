@@ -5,6 +5,9 @@
 
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { getToken as getStoredToken } from '../../src/utils/authStorage';
+
+const DEFAULT_API_PORT = 3001;
 
 function ensureApiSuffix(url) {
   const cleanUrl = url.replace(/\/+$/, '');
@@ -12,26 +15,43 @@ function ensureApiSuffix(url) {
 }
 
 function resolveApiBase() {
+  if (Platform.OS === 'android' && process.env.EXPO_PUBLIC_API_URL_ANDROID) {
+    return ensureApiSuffix(process.env.EXPO_PUBLIC_API_URL_ANDROID);
+  }
+
   if (process.env.EXPO_PUBLIC_API_URL) {
     return ensureApiSuffix(process.env.EXPO_PUBLIC_API_URL);
   }
 
-  const hostUri = Constants.expoConfig?.hostUri;
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.expoGoConfig?.hostUri ||
+    Constants.expoGoConfig?.debuggerHost ||
+    Constants.manifest?.debuggerHost;
   if (hostUri && typeof hostUri === 'string') {
     const host = hostUri.split(':')[0];
     if (host) {
-      return `http://${host}:3000/api`;
+      return `http://${host}:${DEFAULT_API_PORT}/api`;
     }
   }
 
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
+    return `http://10.0.2.2:${DEFAULT_API_PORT}/api`;
   }
 
-  return 'http://localhost:3000/api';
+  return `http://localhost:${DEFAULT_API_PORT}/api`;
 }
 
 const API_BASE = resolveApiBase();
+
+async function buildHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = await getStoredToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 async function parseResponse(response) {
   const text = await response.text();
@@ -50,7 +70,7 @@ export async function createTransfer(payload) {
   try {
     const response = await fetch(`${API_BASE}/transfers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -70,7 +90,7 @@ export async function acknowledgeTransfer(id, payload) {
   try {
     const response = await fetch(`${API_BASE}/transfers/${id}/acknowledge`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
       body: JSON.stringify(payload),
     });
     const result = await parseResponse(response);
@@ -87,7 +107,7 @@ export async function updateTransfer(id, payload) {
   try {
     const response = await fetch(`${API_BASE}/transfers/${id}/updates`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
       body: JSON.stringify(payload),
     });
     const result = await parseResponse(response);
@@ -104,7 +124,7 @@ export async function getTransfer(id) {
   try {
     const response = await fetch(`${API_BASE}/transfers/${id}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {
@@ -120,7 +140,7 @@ export async function getCurrentTransferByPid(pid) {
   try {
     const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/current`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {
@@ -136,7 +156,7 @@ export async function getTransferTimelineByPid(pid) {
   try {
     const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/timeline`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {
@@ -152,7 +172,7 @@ export async function getTransferVersionByTimestamp(pid, timestamp) {
   try {
     const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/version/${timestamp}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {

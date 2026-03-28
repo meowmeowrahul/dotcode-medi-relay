@@ -4,12 +4,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { Colors } from '../../constants/Theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const USER = {
-  name: 'Dr. Aria Patel',
-  hospitalName: 'City Care Medical Center',
-  isDoctor: true,
-};
+import { useAuth } from '../../contexts/AuthContext';
 
 function DrawerLabel({ title, subtitle }) {
   return (
@@ -21,7 +16,16 @@ function DrawerLabel({ title, subtitle }) {
 }
 
 function ProfileSection({ onToggleMenu, menuOpen }) {
+  const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const displayName = user?.username || 'Unknown';
+  const isDoctor = user?.role === 'doctor';
+  const hospitalName = user?.hospitalName;
+  const initials = displayName.slice(0, 2).toUpperCase();
+
+  const handleLogout = async () => {
+    await logout();
+  };
   return (
     <View style={[styles.profileContainer, { paddingBottom: insets.bottom + 8 }]}>
       <Pressable
@@ -29,13 +33,15 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
         style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{USER.name.slice(0, 2).toUpperCase()}</Text>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.profileTextWrap}>
-          <Text style={styles.profileName}>{USER.name}</Text>
-          {USER.isDoctor && USER.hospitalName ? (
-            <Text style={styles.profileMeta}>{USER.hospitalName}</Text>
-          ) : null}
+          <Text style={styles.profileName}>{displayName}</Text>
+          {isDoctor && hospitalName ? (
+            <Text style={styles.profileMeta}>{hospitalName}</Text>
+          ) : (
+            <Text style={styles.profileMeta}>{isDoctor ? 'Doctor' : 'Patient'}</Text>
+          )}
         </View>
       </Pressable>
       {menuOpen && (
@@ -43,7 +49,7 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
           <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}>
             <Text style={styles.menuItemText}>Profile</Text>
           </Pressable>
-          <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}>
+          <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]} onPress={handleLogout}>
             <Text style={[styles.menuItemText, { color: Colors.critical }]}>Logout</Text>
           </Pressable>
         </View>

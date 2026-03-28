@@ -37,7 +37,6 @@ export default function RootLayout() {
   }, []);
 
   return (
-<<<<<<< HEAD
     <AuthProvider>
       <AuthGate>
         <StatusBar style="light" />
@@ -77,43 +76,5 @@ export default function RootLayout() {
         </Stack>
       </AuthGate>
     </AuthProvider>
-=======
-    <>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: Colors.primary,
-          },
-          headerTintColor: Colors.surface,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Stack.Screen name="login" options={{ title: 'Login', headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="transfer/[id]" 
-          options={{ title: 'Patient Handoff Record', headerBackTitle: 'Back' }} 
-        />
-        <Stack.Screen 
-          name="scanner" 
-          options={{ 
-            headerShown: false,
-            presentation: 'fullScreenModal',
-            animation: 'slide_from_bottom',
-          }} 
-        />
-        <Stack.Screen 
-          name="scan-result" 
-          options={{ 
-            title: 'Patient Transfer Record',
-            headerBackTitle: 'Back',
-          }} 
-        />
-      </Stack>
-    </>
->>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
   );
 }

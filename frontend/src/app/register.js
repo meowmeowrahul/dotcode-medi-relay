@@ -3,29 +3,34 @@ import { View, Text, TextInput, StyleSheet, Alert, Pressable, ActivityIndicator 
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/Theme';
 import { Button } from '../components/ui/Button';
-import { loginUser } from '../utils/authApi';
+import { registerUser } from '../utils/authApi';
 import { useAuth } from '../contexts/AuthContext';
 
 const roles = ['doctor', 'patient'];
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const router = useRouter();
   const { saveAuth } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('doctor');
+  const [hospitalName, setHospitalName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
     if (!username || !password || !role) {
       Alert.alert('Missing fields', 'Please provide username, password, and role.');
       return;
     }
+    if (role === 'doctor' && !hospitalName.trim()) {
+      Alert.alert('Missing hospital', 'Hospital name is required for doctors.');
+      return;
+    }
     setLoading(true);
-    const result = await loginUser({ username, password, role });
+    const result = await registerUser({ username, password, role, hospitalName });
     setLoading(false);
     if (!result.success) {
-      Alert.alert('Login failed', result.error || 'Unable to login');
+      Alert.alert('Registration failed', result.error || 'Unable to register');
       return;
     }
     const { token, user } = result.data;
@@ -35,8 +40,8 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome back</Text>
-      <Text style={styles.subtitle}>Sign in to continue</Text>
+      <Text style={styles.title}>Create account</Text>
+      <Text style={styles.subtitle}>Register to start transferring</Text>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Username</Text>
@@ -78,11 +83,24 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      <Button title={loading ? 'Signing in...' : 'Login'} onPress={handleLogin} style={{ marginTop: 8 }} />
+      {role === 'doctor' && (
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Hospital Name</Text>
+          <TextInput
+            style={styles.input}
+            value={hospitalName}
+            onChangeText={setHospitalName}
+            placeholder="City Care Medical Center"
+            placeholderTextColor={Colors.textSecondary}
+          />
+        </View>
+      )}
+
+      <Button title={loading ? 'Creating account...' : 'Register'} onPress={handleRegister} style={{ marginTop: 8 }} />
       {loading && <ActivityIndicator color={Colors.primary} style={{ marginTop: 8 }} />}
 
-      <Pressable onPress={() => router.push('/register')} style={{ marginTop: 16 }}>
-        <Text style={styles.link}>New here? Create an account</Text>
+      <Pressable onPress={() => router.push('/login')} style={{ marginTop: 16 }}>
+        <Text style={styles.link}>Already have an account? Login</Text>
       </Pressable>
     </View>
   );

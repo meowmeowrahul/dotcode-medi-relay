@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { Colors } from '../../constants/Theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { clearSessionState, getSessionState, subscribeSession } from '../../state/userSession';
+import { useAuth } from '../../contexts/AuthContext';
 
 function DrawerLabel({ title, subtitle }) {
   return (
@@ -18,7 +18,12 @@ function DrawerLabel({ title, subtitle }) {
 
 function ProfileSection({ onToggleMenu, menuOpen, user, onNavigateProfile, onLogout }) {
   const insets = useSafeAreaInsets();
-  const initials = (user?.name || 'U')
+  const displayName = (user?.username || user?.name || 'Unknown User').trim();
+  const role = user?.role || 'patient';
+  const hospitalName = user?.hospitalName || '';
+  const isDoctor = role === 'doctor';
+
+  const initials = (displayName || 'U')
     .trim()
     .split(/\s+/)
     .slice(0, 2)
@@ -35,10 +40,12 @@ function ProfileSection({ onToggleMenu, menuOpen, user, onNavigateProfile, onLog
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.profileTextWrap}>
-          <Text style={styles.profileName}>{user?.name || 'Unknown User'}</Text>
-          {user?.role === 'doctor' && user?.hospitalName ? (
-            <Text style={styles.profileMeta}>{user.hospitalName}</Text>
-          ) : null}
+          <Text style={styles.profileName}>{displayName}</Text>
+          {isDoctor && hospitalName ? (
+            <Text style={styles.profileMeta}>{hospitalName}</Text>
+          ) : (
+            <Text style={styles.profileMeta}>{isDoctor ? 'Doctor' : 'Patient'}</Text>
+          )}
         </View>
       </Pressable>
       {menuOpen && (
@@ -63,12 +70,8 @@ function ProfileSection({ onToggleMenu, menuOpen, user, onNavigateProfile, onLog
 
 function CustomDrawerContent(props) {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [session, setSession] = useState(getSessionState());
-
-  React.useEffect(() => {
-    return subscribeSession(setSession);
-  }, []);
 
   const toggleMenu = () => setMenuOpen(prev => !prev);
 
@@ -77,8 +80,8 @@ function CustomDrawerContent(props) {
     props.navigation.navigate('profile');
   };
 
-  const handleLogout = () => {
-    clearSessionState();
+  const handleLogout = async () => {
+    await logout();
     setMenuOpen(false);
     props.navigation.closeDrawer();
     router.replace('/login');
@@ -117,7 +120,7 @@ function CustomDrawerContent(props) {
       <ProfileSection
         onToggleMenu={toggleMenu}
         menuOpen={menuOpen}
-        user={session.user}
+        user={user}
         onNavigateProfile={handleProfileNavigate}
         onLogout={handleLogout}
       />
@@ -126,13 +129,13 @@ function CustomDrawerContent(props) {
 }
 
 export default function DrawerLayout() {
-  const [session, setSession] = useState(getSessionState());
+  const { token, loading } = useAuth();
 
-  React.useEffect(() => {
-    return subscribeSession(setSession);
-  }, []);
+  if (loading) {
+    return null;
+  }
 
-  if (!session.isAuthenticated) {
+  if (!token) {
     return <Redirect href="/login" />;
   }
 

@@ -44,7 +44,7 @@ router.get('/pid/:pid/timeline', async (req, res) => {
   try {
     const versions = await Transfer.find({ pid: req.params.pid })
       .sort({ submissionTimestamp: -1 })
-      .select('_id pid nam status submissionTimestamp submittedAt isCurrent previousVersionId createdAt updatedAt');
+      .select('_id pid nam status acknowledgementStatus submissionTimestamp submittedAt isCurrent previousVersionId createdAt updatedAt');
 
     res.json({ success: true, data: versions });
   } catch (err) {
@@ -130,6 +130,7 @@ router.post('/', validateCreateTransfer, async (req, res) => {
     const transfer = new Transfer({
       ...normalizedPayload,
       status: 'IN_TRANSIT',
+      acknowledgementStatus: 'UNACKNOWLEDGED',
       isCurrent: true,
       history: [{
         action: 'CREATED',
@@ -183,7 +184,8 @@ router.post('/:id/updates', validateUpdate, validateUpdateTimestamp, async (req,
       vit: currentTransfer.vit,
       pi: currentTransfer.pi,
       sum: currentTransfer.sum,
-      acknowledgement: currentTransfer.acknowledgement,
+      acknowledgement: null,
+      acknowledgementStatus: 'UNACKNOWLEDGED',
       status: 'UPDATED',
       previousVersionId: currentTransfer._id,
       isCurrent: true,
@@ -244,6 +246,13 @@ router.post('/:id/acknowledge', validateAcknowledge, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Transfer record not found' });
     }
 
+    if (!transfer.isCurrent) {
+      return res.status(409).json({
+        success: false,
+        error: 'Historical timeline versions are read-only and cannot be acknowledged',
+      });
+    }
+
     // Prevent duplicate acknowledgement
     if (transfer.acknowledgement && transfer.acknowledgement.timestamp) {
       return res.status(409).json({
@@ -260,6 +269,7 @@ router.post('/:id/acknowledge', validateAcknowledge, async (req, res) => {
       discrepancies: discrepancies || '',
       acknowledgedAt: new Date(),
     };
+    transfer.acknowledgementStatus = 'ACKNOWLEDGED';
 
     // Update status based on whether discrepancies were flagged
     transfer.status = discrepancies && discrepancies.trim().length > 0

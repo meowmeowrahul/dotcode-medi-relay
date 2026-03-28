@@ -50,6 +50,11 @@ const transferSchema = new mongoose.Schema({
 
   // Receiver acknowledgement (populated on acknowledge)
   acknowledgement: { type: acknowledgementSchema, default: null },
+  acknowledgementStatus: {
+    type: String,
+    enum: ['UNACKNOWLEDGED', 'ACKNOWLEDGED'],
+    default: 'UNACKNOWLEDGED',
+  },
 
   // Audit trail
   history: { type: [historyEntrySchema], default: [] },

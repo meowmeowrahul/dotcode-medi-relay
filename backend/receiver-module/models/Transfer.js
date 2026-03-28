@@ -29,6 +29,10 @@ const historyEntrySchema = new mongoose.Schema({
 const transferSchema = new mongoose.Schema({
   // Core patient identifiers
   pid: { type: String, required: true },         // Patient ID
+  did: { type: String, required: true },         // Doctor/issuer ID
+  fh: { type: String, default: '' },             // From Hospital
+  th: { type: String, default: '' },             // To Hospital
+  bg: { type: String, default: '' },             // Blood Group
   nam: { type: String, required: true },         // Patient name
   age: { type: Number },                         // Age
 
@@ -72,6 +76,7 @@ const transferSchema = new mongoose.Schema({
 
 // Index for quick lookup by patient ID
 transferSchema.index({ pid: 1 });
+transferSchema.index({ did: 1 });
 transferSchema.index({ status: 1 });
 transferSchema.index({ pid: 1, submissionTimestamp: 1 }, { unique: true });
 transferSchema.index({ pid: 1, isCurrent: 1 });

@@ -7,11 +7,18 @@ const { verifyToken, JWT_SECRET } = require('../middleware/auth');
 const router = express.Router();
 
 function buildToken(user) {
+  const normalizedRole = String(user.role || '').toLowerCase();
+  const patientId = normalizedRole === 'patient'
+    ? String(user.pid || user.patientId || user.username || '').trim()
+    : '';
+
   return jwt.sign(
     {
       id: user._id,
       username: user.username,
       role: user.role,
+      pid: patientId || undefined,
+      patientId: patientId || undefined,
       hospitalName: user.hospitalName || '',
     },
     JWT_SECRET,
@@ -20,10 +27,17 @@ function buildToken(user) {
 }
 
 function toSafeUser(user) {
+  const normalizedRole = String(user.role || '').toLowerCase();
+  const patientId = normalizedRole === 'patient'
+    ? String(user.pid || user.patientId || user.username || '').trim()
+    : '';
+
   return {
     id: user._id,
     username: user.username,
     role: user.role,
+    pid: patientId || undefined,
+    patientId: patientId || undefined,
     hospitalName: user.hospitalName || '',
   };
 }

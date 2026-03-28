@@ -22,6 +22,7 @@ function validateCreateTransfer(req, res, next) {
   }
 
   const patientId = body.pid || body.patientId;
+  const doctorId = body.did || body.doctorId;
   const patientName = body.nam || body.patientName;
 
   if (!isNonEmptyString(patientId)) {
@@ -35,6 +36,13 @@ function validateCreateTransfer(req, res, next) {
     return res.status(400).json({
       success: false,
       error: 'patientName (or nam) is required',
+    });
+  }
+
+  if (!isNonEmptyString(doctorId)) {
+    return res.status(400).json({
+      success: false,
+      error: 'doctorId (or did) is required',
     });
   }
 
@@ -155,6 +163,34 @@ function validateUpdate(req, res, next) {
     return res.status(400).json({
       success: false,
       error: 'age must be a number',
+    });
+  }
+
+  if (body.did !== undefined && typeof body.did !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'did must be a string',
+    });
+  }
+
+  if (body.fh !== undefined && typeof body.fh !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'fh must be a string',
+    });
+  }
+
+  if (body.th !== undefined && typeof body.th !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'th must be a string',
+    });
+  }
+
+  if (body.bg !== undefined && typeof body.bg !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'bg must be a string',
     });
   }
 

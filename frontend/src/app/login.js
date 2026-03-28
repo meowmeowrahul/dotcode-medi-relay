@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert, Pressable, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '../constants/Theme';
 import { Button } from '../components/ui/Button';
 import { loginUser } from '../utils/authApi';
@@ -10,6 +10,7 @@ const roles = ['doctor', 'patient'];
 
 export default function LoginScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { saveAuth } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +31,8 @@ export default function LoginScreen() {
     }
     const { token, user } = result.data;
     await saveAuth(token, user);
-    router.replace('/(tabs)');
+    const redirect = typeof params?.redirect === 'string' ? params.redirect : null;
+    router.replace(redirect || '/(tabs)');
   };
 
   return (

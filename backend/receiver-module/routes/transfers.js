@@ -5,7 +5,7 @@ const { normalizeTransferSubmission } = require('../utils/transferSubmission');
 const { validateCreateTransfer, validateAcknowledge, validateUpdate, validateUpdateTimestamp } = require('../middleware/validation');
 
 function collectAllowedUpdates(body) {
-  const allowedFields = ['pid', 'nam', 'age', 'pd', 'rt', 'alg', 'med', 'vit', 'pi', 'sum'];
+  const allowedFields = ['pid', 'did', 'fh', 'th', 'bg', 'nam', 'age', 'pd', 'rt', 'alg', 'med', 'vit', 'pi', 'sum'];
   const updates = {};
   const modifiedFields = [];
 
@@ -18,6 +18,64 @@ function collectAllowedUpdates(body) {
 
   return { updates, modifiedFields };
 }
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/transfers/doctor/:did/issued — Doctor-issued QRs
+// ─────────────────────────────────────────────────────────────
+router.get('/doctor/:did/issued', async (req, res) => {
+  try {
+    const { limit = 200, skip = 0 } = req.query;
+    const did = String(req.params.did || '').trim();
+
+    if (!did) {
+      return res.status(400).json({ success: false, error: 'did is required' });
+    }
+
+    const query = { did };
+    const transfers = await Transfer.find(query)
+      .sort({ submissionTimestamp: -1 })
+      .limit(parseInt(limit, 10))
+      .skip(parseInt(skip, 10));
+
+    const total = await Transfer.countDocuments(query);
+    res.json({
+      success: true,
+      data: transfers,
+      pagination: { total, limit: parseInt(limit, 10), skip: parseInt(skip, 10) },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/transfers/patient/:pid/past — Patient past QRs
+// ─────────────────────────────────────────────────────────────
+router.get('/patient/:pid/past', async (req, res) => {
+  try {
+    const { limit = 200, skip = 0 } = req.query;
+    const pid = String(req.params.pid || '').trim();
+
+    if (!pid) {
+      return res.status(400).json({ success: false, error: 'pid is required' });
+    }
+
+    const query = { pid };
+    const transfers = await Transfer.find(query)
+      .sort({ submissionTimestamp: -1 })
+      .limit(parseInt(limit, 10))
+      .skip(parseInt(skip, 10));
+
+    const total = await Transfer.countDocuments(query);
+    res.json({
+      success: true,
+      data: transfers,
+      pagination: { total, limit: parseInt(limit, 10), skip: parseInt(skip, 10) },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/transfers/pid/:pid/current — Fetch current version for PID
@@ -175,6 +233,10 @@ router.post('/:id/updates', validateUpdate, validateUpdateTimestamp, async (req,
     const updateTimestamp = req.body.timestamp || Date.now();
     const nextVersion = new Transfer({
       pid: currentTransfer.pid,
+      did: currentTransfer.did || 'DOC-UNKNOWN',
+      fh: currentTransfer.fh,
+      th: currentTransfer.th,
+      bg: currentTransfer.bg,
       nam: currentTransfer.nam,
       age: currentTransfer.age,
       pd: currentTransfer.pd,

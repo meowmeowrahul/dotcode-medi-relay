@@ -103,6 +103,10 @@ function normalizeTransferSubmission(body) {
 
   const normalized = {
     pid: body.pid || body.patientId,
+    did: body.did || body.doctorId,
+    fh: body.fh || body.fromHospital,
+    th: body.th || body.toHospital,
+    bg: body.bg || body.bloodGroup,
     nam: body.nam || body.patientName,
     age: body.age !== undefined ? parseAge(body.age) : undefined,
     pd: body.pd || body.primaryDiagnosis,

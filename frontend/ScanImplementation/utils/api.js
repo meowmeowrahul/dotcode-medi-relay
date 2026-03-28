@@ -86,6 +86,26 @@ export async function createTransfer(payload) {
   }
 }
 
+export async function generateSecureQrToken(recordId) {
+  try {
+    const response = await fetch(`${API_BASE}/qr/generate`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({ recordId }),
+    });
+
+    const result = await parseResponse(response);
+
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function acknowledgeTransfer(id, payload) {
   try {
     const response = await fetch(`${API_BASE}/transfers/${id}/acknowledge`, {

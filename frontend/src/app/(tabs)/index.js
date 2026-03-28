@@ -1,40 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Button, Alert, Text } from 'react-native';
 import { TransferForm } from '../../components/forms/TransferForm';
 import { Colors } from '../../constants/Theme';
 import GenerateQR from '../../components/GenerateQR';
 import { createTransfer } from '../../../ScanImplementation/utils/api';
-import { getSessionState, setSessionState, subscribeSession } from '../../state/userSession';
-
-const DUMMY_ROLE = 'patient';
-const DUMMY_DOCTOR_ID = 'DOC-DEMO-001';
-const DUMMY_PATIENT_ID = 'PID-DEMO-001';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SenderTab() {
   const [formData, setFormData] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [session, setSession] = useState(getSessionState());
+  const { user } = useAuth();
 
-  useEffect(() => {
-    return subscribeSession(setSession);
-  }, []);
-
-  useEffect(() => {
-    const user = session.user || {};
-    if (!user.role || !user.did || !user.pid) {
-      setSessionState({
-        user: {
-          ...user,
-          role: user.role || DUMMY_ROLE,
-          did: user.did || DUMMY_DOCTOR_ID,
-          pid: user.pid || DUMMY_PATIENT_ID,
-        },
-      });
-    }
-  }, [session.user]);
-
-  const userRole = session.user?.role || DUMMY_ROLE;
-  const doctorId = session.user?.did || DUMMY_DOCTOR_ID;
+  const userRole = String(user?.role || '').toLowerCase();
+  const doctorId = user?.did || user?.id || user?.username || '';
 
   const handleSubmit = async (data) => {
     try {
@@ -50,7 +28,8 @@ export default function SenderTab() {
         throw new Error(result.error || 'Failed to submit transfer');
       }
 
-      setFormData(data);
+      const createdRecordId = result.data?._id || result.data?.id || result.data?.recordId;
+      setFormData({ ...data, recordId: createdRecordId });
       Alert.alert('Submitted', 'Transfer submitted to backend successfully.');
     } catch (error) {
       Alert.alert('Submission failed', error.message || 'Unable to submit transfer.');
@@ -61,7 +40,7 @@ export default function SenderTab() {
 
   return (
     <ScrollView style={styles.container}>
-      {userRole === 'patient' ? (
+      {userRole !== 'doctor' ? (
         <View style={styles.readOnlyBox}>
           <Text style={styles.readOnlyTitle}>Issuer access disabled</Text>
           <Text style={styles.readOnlyText}>Patients cannot issue transfer QRs. Use Recipient to scan and view records.</Text>

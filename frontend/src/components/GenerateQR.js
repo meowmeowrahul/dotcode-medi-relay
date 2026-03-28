@@ -1,11 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { generatePayload } from '../utils/QRService';
+import { generateSecureQrToken } from '../../ScanImplementation/utils/api';
 
 export default function GenerateQR({ formData }) {
   // Medical-Grade UI styling: Cobalt Blue primary color (#0047AB)
   const primaryColor = '#0047AB';
+  const [loadingToken, setLoadingToken] = useState(true);
+  const [secureUrl, setSecureUrl] = useState('');
+  const [tokenError, setTokenError] = useState('');
 
   // Make sure we have formData, else show a placeholder.
   if (!formData) {
@@ -16,7 +19,43 @@ export default function GenerateQR({ formData }) {
     );
   }
 
-  const payload = generatePayload(formData);
+  useEffect(() => {
+    let active = true;
+
+    async function createToken() {
+      const recordId = formData?.recordId;
+      if (!recordId) {
+        if (active) {
+          setTokenError('Missing recordId. Submit transfer first to generate a secure QR.');
+          setLoadingToken(false);
+        }
+        return;
+      }
+
+      setLoadingToken(true);
+      setTokenError('');
+
+      const result = await generateSecureQrToken(recordId);
+
+      if (!active) return;
+
+      if (!result.success || !result.data?.deepLink) {
+        setTokenError(result.error || 'Unable to generate secure QR token.');
+        setSecureUrl('');
+        setLoadingToken(false);
+        return;
+      }
+
+      setSecureUrl(result.data.deepLink);
+      setLoadingToken(false);
+    }
+
+    createToken();
+
+    return () => {
+      active = false;
+    };
+  }, [formData]);
 
   return (
     <View style={styles.container}>
@@ -24,19 +63,31 @@ export default function GenerateQR({ formData }) {
         <Text style={[styles.headerText, { color: primaryColor }]}>Handover QR Code</Text>
         <Text style={styles.subText}>Scan this code with the MediRelay app or a standard camera.</Text>
         
-        <View style={styles.qrContainer}>
-          <QRCode
-            value={payload}
-            size={250}
-            color="black"
-            backgroundColor="white"
-            ecl="M" // Medium error correction level
-          />
-        </View>
+        {loadingToken ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={primaryColor} />
+            <Text style={styles.loadingText}>Generating secure tokenized QR...</Text>
+          </View>
+        ) : tokenError ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.errorText}>{tokenError}</Text>
+          </View>
+        ) : (
+          <View style={styles.qrContainer}>
+            <QRCode
+              value={secureUrl}
+              size={250}
+              color="black"
+              backgroundColor="white"
+              ecl="M"
+            />
+          </View>
+        )}
 
         <View style={styles.infoContainer}>
           <Text style={styles.infoText}>Doctor ID: {formData.doctorId || formData.did || 'N/A'}</Text>
           <Text style={styles.infoText}>Patient: {formData.patientName || 'N/A'}</Text>
+          <Text style={styles.infoText} numberOfLines={2}>Secure Link: {secureUrl || 'N/A'}</Text>
           <Text style={styles.infoText}>Status: <Text style={styles.syncedText}>Ready for Transfer</Text></Text>
         </View>
       </View>
@@ -83,6 +134,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     marginBottom: 24,
+  },
+  loadingContainer: {
+    paddingVertical: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
   },
   infoContainer: {
     alignItems: 'center',

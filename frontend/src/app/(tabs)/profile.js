@@ -15,14 +15,14 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Colors } from '../../constants/Theme';
 import { deleteUserProfile, getUserProfile, updateUserProfile } from '../../../ScanImplementation/utils/api';
-import { clearSessionState, getSessionState, setUserProfile, subscribeSession } from '../../state/userSession';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [session, setSession] = useState(getSessionState());
-  const [profile, setProfile] = useState(getSessionState().user || null);
-  const [draft, setDraft] = useState(getSessionState().user || null);
+  const { user, token, saveAuth, logout } = useAuth();
+  const [profile, setProfile] = useState(user || null);
+  const [draft, setDraft] = useState(user || null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,14 +30,9 @@ export default function ProfileScreen() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = subscribeSession(setSession);
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    setProfile(session.user || null);
-    setDraft(session.user || null);
-  }, [session.user]);
+    setProfile(user || null);
+    setDraft(user || null);
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;
@@ -56,9 +51,9 @@ export default function ProfileScreen() {
       }
 
       const next = result.data;
-      setUserProfile(next);
       setProfile(next);
       setDraft(next);
+      await saveAuth(token, next);
     };
 
     loadProfile();
@@ -66,10 +61,10 @@ export default function ProfileScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [saveAuth, token]);
 
   const initials = useMemo(() => {
-    const name = profile?.name || '';
+  const name = profile?.name || profile?.username || '';
     if (!name) return 'U';
     const parts = name.trim().split(/\s+/).slice(0, 2);
     return parts.map((part) => part[0]?.toUpperCase() || '').join('') || 'U';
@@ -139,7 +134,7 @@ export default function ProfileScreen() {
 
     setProfile(result.data);
     setDraft(result.data);
-    setUserProfile(result.data);
+    await saveAuth(token, result.data);
     setIsEditing(false);
     Alert.alert('Success', 'Profile updated successfully.');
   };
@@ -171,7 +166,7 @@ export default function ProfileScreen() {
       return;
     }
 
-    clearSessionState();
+    await logout();
     Alert.alert('Account deleted', 'Your account has been removed.');
     router.replace('/login');
   };

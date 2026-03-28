@@ -193,7 +193,7 @@ export async function listTransfers({ status, limit = 200, skip = 0 } = {}) {
 
     const response = await fetch(`${API_BASE}/transfers?${query.toString()}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {
@@ -209,7 +209,7 @@ export async function getUserProfile() {
   try {
     const response = await fetch(`${API_BASE}/user/profile`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {
@@ -225,7 +225,7 @@ export async function updateUserProfile(payload) {
   try {
     const response = await fetch(`${API_BASE}/user/profile`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
       body: JSON.stringify(payload),
     });
     const result = await parseResponse(response);
@@ -242,7 +242,7 @@ export async function deleteUserProfile() {
   try {
     const response = await fetch(`${API_BASE}/user/profile`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {

@@ -1,13 +1,13 @@
 export const Colors = {
-  primary: '#0A5C8C',          // Medical Blue
-  secondary: '#00897B',        // Teal/Green
-  critical: '#D32F2F',         // Emergency Red
-  warning: '#F57C00',          // Interaction Orange
-  background: '#F4F6F8',       // Soft Gray
-  surface: '#FFFFFF',          // Card Color
-  textPrimary: '#1D1D1D',      // Near Black
-  textSecondary: '#5C6670',    // Subtitles
-  border: '#E0E0E0',           // Light border for inputs
+  primary: '#0E6BA8',          // Calm medical blue
+  secondary: '#0FA3B1',        // Teal accent
+  critical: '#C62828',         // Emergency Red
+  warning: '#F9A825',          // Amber warning
+  background: '#F5F7FB',       // Soft cool gray-blue
+  surface: '#FFFFFF',          // Card / panels
+  textPrimary: '#1C2A3D',      // Deep navy-gray
+  textSecondary: '#5F6B7A',    // Muted label
+  border: '#E3E8EF',           // Gentle border
 };
 
 export const Typography = {

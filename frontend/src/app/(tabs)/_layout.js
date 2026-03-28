@@ -95,11 +95,13 @@ function CustomDrawerContent(props) {
       </View>
 
       <View style={styles.drawerItems}>
-        <DrawerItem
-          label={() => <DrawerLabel title="Issuer" subtitle="Create handoff" />}
-          onPress={() => props.navigation.navigate('index')}
-          style={styles.drawerItem}
-        />
+        {session.user?.role !== 'patient' ? (
+          <DrawerItem
+            label={() => <DrawerLabel title="Issuer" subtitle="Create handoff" />}
+            onPress={() => props.navigation.navigate('index')}
+            style={styles.drawerItem}
+          />
+        ) : null}
         <DrawerItem
           label={() => <DrawerLabel title="Recipient" subtitle="Receive updates" />}
           onPress={() => props.navigation.navigate('receiver')}

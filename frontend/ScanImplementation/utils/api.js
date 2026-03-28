@@ -185,6 +185,46 @@ export async function listTransfers({ status, limit = 200, skip = 0 } = {}) {
   }
 }
 
+export async function listDoctorIssuedTransfers(did, { limit = 200, skip = 0 } = {}) {
+  try {
+    const query = new URLSearchParams();
+    query.append('limit', String(limit));
+    query.append('skip', String(skip));
+
+    const response = await fetch(`${API_BASE}/transfers/doctor/${encodeURIComponent(did)}/issued?${query.toString()}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data || [], pagination: result.pagination };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function listPatientPastTransfers(pid, { limit = 200, skip = 0 } = {}) {
+  try {
+    const query = new URLSearchParams();
+    query.append('limit', String(limit));
+    query.append('skip', String(skip));
+
+    const response = await fetch(`${API_BASE}/transfers/patient/${encodeURIComponent(pid)}/past?${query.toString()}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data || [], pagination: result.pagination };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getUserProfile() {
   try {
     const response = await fetch(`${API_BASE}/user/profile`, {

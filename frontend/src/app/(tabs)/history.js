@@ -3,23 +3,36 @@ import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, ScrollView
 import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui/Card';
 import { Colors } from '../../constants/Theme';
-import { listTransfers } from '../../../ScanImplementation/utils/api';
+import { listDoctorIssuedTransfers, listPatientPastTransfers } from '../../../ScanImplementation/utils/api';
+import { getSessionState, subscribeSession } from '../../state/userSession';
 
 export default function HistoryTab() {
   const router = useRouter();
+  const [session, setSession] = useState(getSessionState());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [groupedTimeline, setGroupedTimeline] = useState([]);
+
+  useEffect(() => {
+    return subscribeSession(setSession);
+  }, []);
 
   const loadTimeline = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    const result = await listTransfers({ limit: 300, skip: 0 });
+    const role = session.user?.role || 'doctor';
+    const did = session.user?.did || 'DOC-DEMO-001';
+    const pid = session.user?.pid || 'PID-DEMO-001';
+
+    const result = role === 'patient'
+      ? await listPatientPastTransfers(pid, { limit: 300, skip: 0 })
+      : await listDoctorIssuedTransfers(did, { limit: 300, skip: 0 });
+
     setLoading(false);
 
     if (!result.success) {
-      setError(result.error || 'Failed to load sender history timeline.');
+      setError(result.error || 'Failed to load role-based history timeline.');
       return;
     }
 
@@ -44,7 +57,7 @@ export default function HistoryTab() {
       });
 
     setGroupedTimeline(sortedGroups);
-  }, []);
+  }, [session.user]);
 
   useEffect(() => {
     loadTimeline();
@@ -67,7 +80,7 @@ export default function HistoryTab() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.metaText}>Loading sender timeline...</Text>
+          <Text style={styles.metaText}>Loading role-based timeline...</Text>
         </View>
       ) : error ? (
         <Card>

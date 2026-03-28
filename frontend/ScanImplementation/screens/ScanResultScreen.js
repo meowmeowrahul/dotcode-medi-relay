@@ -20,6 +20,7 @@ import {
   getTransferVersionByTimestamp,
 } from '../utils/api';
 import AcknowledgeModal from '../components/AcknowledgeModal';
+import { getSessionState, subscribeSession } from '../../src/state/userSession';
 
 const FIELD_LABELS = {
   pid: 'Patient ID',
@@ -126,6 +127,13 @@ export default function ScanResultScreen() {
   const [recordLoading, setRecordLoading] = useState(false);
   const [activeVersionTimestamp, setActiveVersionTimestamp] = useState(initialData.submissionTimestamp || null);
   const [isHistoricalView, setIsHistoricalView] = useState(false);
+  const [session, setSession] = useState(getSessionState());
+
+  useEffect(() => {
+    return subscribeSession(setSession);
+  }, []);
+
+  const isPatient = session.user?.role === 'patient';
 
   const transferId = record._id;
   const pid = record.pid || initialData.pid;
@@ -208,6 +216,11 @@ export default function ScanResultScreen() {
   }, []);
 
   const startEditing = () => {
+    if (isPatient) {
+      Alert.alert('Read-only access', 'Patients can view records but cannot edit transfer data.');
+      return;
+    }
+
     if (isHistoricalView) {
       Alert.alert('Read-only version', 'Historical timeline snapshots cannot be edited.');
       return;
@@ -590,7 +603,7 @@ export default function ScanResultScreen() {
                 <Text style={[styles.actionButtonText, { color: Colors.primary }]}>Cancel</Text>
               </TouchableOpacity>
             </>
-          ) : !isHistoricalView ? (
+          ) : !isHistoricalView && !isPatient ? (
             <>
               <TouchableOpacity
                 style={[styles.actionButton, styles.acknowledgeButton]}

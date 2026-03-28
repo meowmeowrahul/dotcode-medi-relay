@@ -1,6 +1,8 @@
 const DEFAULT_USER = {
   name: 'Dr. Aria Patel',
   role: 'doctor',
+  did: 'DOC-DEMO-001',
+  pid: 'PID-DEMO-001',
   hospitalName: 'City Care Medical Center',
   profileImage: '',
 };

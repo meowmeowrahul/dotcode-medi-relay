@@ -127,6 +127,22 @@ export default function DrawerLayout() {
           headerTitle: 'History',
         }}
       />
+      <Drawer.Screen
+        name="scanner"
+        options={{
+          title: 'Scanner',
+          headerTitle: 'Scan Transfer QR',
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
+      <Drawer.Screen
+        name="scan-result"
+        options={{
+          title: 'Scan Result',
+          headerTitle: 'Patient Transfer Record',
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
     </Drawer>
   );
 }

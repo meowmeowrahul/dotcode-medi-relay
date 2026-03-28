@@ -16,6 +16,7 @@ import { Colors } from '../../constants/Theme';
 export const TransferForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
     patientName: '',
+    age: '',
     patientId: '',
     primaryDiagnosis: '',
     activeMedications: '',
@@ -70,6 +71,12 @@ export const TransferForm = ({ onSubmit }) => {
           placeholder="MRN / Patient ID"
           value={formData.patientId}
           onChangeText={(val) => handleChange('patientId', val)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Age"
+          value={formData.age}
+          onChangeText={(val) => handleChange('age', val)}
         />
       </Card>
 

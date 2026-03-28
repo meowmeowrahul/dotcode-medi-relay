@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 // Sub-schemas for structured clinical data
 const medicationSchema = new mongoose.Schema({
@@ -52,6 +53,14 @@ const transferSchema = new mongoose.Schema({
 
   // Audit trail
   history: { type: [historyEntrySchema], default: [] },
+
+  // Source submission timestamp (explicitly captured per form submit)
+  submittedAt: { type: Date, default: Date.now },
+  submissionTimestamp: { type: Number, default: () => Date.now() },
+
+  // Version chain metadata for immutable update history
+  previousVersionId: { type: Schema.Types.ObjectId, ref: 'Transfer', default: null },
+  isCurrent: { type: Boolean, default: true },
 }, {
   timestamps: true,  // createdAt, updatedAt
 });
@@ -59,5 +68,7 @@ const transferSchema = new mongoose.Schema({
 // Index for quick lookup by patient ID
 transferSchema.index({ pid: 1 });
 transferSchema.index({ status: 1 });
+transferSchema.index({ pid: 1, submissionTimestamp: 1 }, { unique: true });
+transferSchema.index({ pid: 1, isCurrent: 1 });
 
 module.exports = mongoose.model('Transfer', transferSchema);

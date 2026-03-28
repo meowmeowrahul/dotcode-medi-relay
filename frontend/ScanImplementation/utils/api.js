@@ -3,7 +3,68 @@
  * All methods return a consistent { success, data, error } shape.
  */
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+function ensureApiSuffix(url) {
+  const cleanUrl = url.replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+}
+
+function resolveApiBase() {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return ensureApiSuffix(process.env.EXPO_PUBLIC_API_URL);
+  }
+
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri && typeof hostUri === 'string') {
+    const host = hostUri.split(':')[0];
+    if (host) {
+      return `http://${host}:3000/api`;
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000/api';
+  }
+
+  return 'http://localhost:3000/api';
+}
+
+const API_BASE = resolveApiBase();
+
+async function parseResponse(response) {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (_error) {
+    return { error: text };
+  }
+}
+
+export async function createTransfer(payload) {
+  try {
+    const response = await fetch(`${API_BASE}/transfers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await parseResponse(response);
+
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
 
 export async function acknowledgeTransfer(id, payload) {
   try {
@@ -12,7 +73,7 @@ export async function acknowledgeTransfer(id, payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const result = await response.json();
+    const result = await parseResponse(response);
     if (!response.ok) {
       throw new Error(result.error || `Server responded with status ${response.status}`);
     }
@@ -24,12 +85,12 @@ export async function acknowledgeTransfer(id, payload) {
 
 export async function updateTransfer(id, payload) {
   try {
-    const response = await fetch(`${API_BASE}/transfers/${id}`, {
-      method: 'PUT',
+    const response = await fetch(`${API_BASE}/transfers/${id}/updates`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const result = await response.json();
+    const result = await parseResponse(response);
     if (!response.ok) {
       throw new Error(result.error || `Server responded with status ${response.status}`);
     }
@@ -45,7 +106,55 @@ export async function getTransfer(id) {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
-    const result = await response.json();
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getCurrentTransferByPid(pid) {
+  try {
+    const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/current`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getTransferTimelineByPid(pid) {
+  try {
+    const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/timeline`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getTransferVersionByTimestamp(pid, timestamp) {
+  try {
+    const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/version/${timestamp}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
     if (!response.ok) {
       throw new Error(result.error || `Server responded with status ${response.status}`);
     }

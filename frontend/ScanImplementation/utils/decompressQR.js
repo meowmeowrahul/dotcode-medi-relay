@@ -27,11 +27,41 @@ function toArray(value) {
   return [];
 }
 
+function parseMedicationText(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+
+  return value
+    .split(/\n|;/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const [n, d = '', r = ''] = item.split('|').map((part) => part.trim());
+      return { n, d, r };
+    });
+}
+
+function parseVitals(value) {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  if (!text) return undefined;
+
+  const hrMatch = text.match(/(?:^|\b)hr\s*[:=]?\s*(\d{2,3})\b/i);
+  const bpMatch = text.match(/(?:^|\b)bp\s*[:=]?\s*(\d{2,3}\s*\/\s*\d{2,3})\b/i);
+
+  const vitals = { raw: text };
+  if (hrMatch) vitals.hr = Number(hrMatch[1]);
+  if (bpMatch) vitals.bp = bpMatch[1].replace(/\s+/g, '');
+
+  return vitals;
+}
+
 function normalizePayloadShape(parsed) {
   const expanded = {
     ...parsed,
     patientId: parsed.patientId || parsed.i,
     patientName: parsed.patientName || parsed.pn,
+    age: parsed.age ?? parsed.ag,
     primaryDiagnosis: parsed.primaryDiagnosis || parsed.dx,
     activeMedications: parsed.activeMedications || parsed.md,
     allergies: parsed.allergies || parsed.al,
@@ -48,10 +78,14 @@ function normalizePayloadShape(parsed) {
     pd: expanded.pd || expanded.primaryDiagnosis,
     rt: expanded.rt || expanded.transferReason,
     alg: expanded.alg ?? toArray(expanded.allergies),
-    med: Array.isArray(expanded.med) ? expanded.med : [],
+    med: Array.isArray(expanded.med)
+      ? expanded.med
+      : parseMedicationText(expanded.activeMedications),
     vit: typeof expanded.vit === 'object' && expanded.vit !== null
       ? expanded.vit
-      : (typeof expanded.lastVitals === 'object' && expanded.lastVitals !== null ? expanded.lastVitals : undefined),
+      : (typeof expanded.lastVitals === 'object' && expanded.lastVitals !== null
+        ? expanded.lastVitals
+        : parseVitals(expanded.lastVitals)),
     pi: expanded.pi ?? toArray(expanded.pendingInvestigations),
     sum: expanded.sum || expanded.clinicalSummary,
   };

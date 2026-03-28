@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../src/constants/Theme';
-import { acknowledgeTransfer, updateTransfer } from '../utils/api';
+import {
+  updateTransfer,
+  getCurrentTransferByPid,
+  getTransferTimelineByPid,
+  getTransferVersionByTimestamp,
+} from '../utils/api';
 import AcknowledgeModal from '../components/AcknowledgeModal';
 
 const FIELD_LABELS = {
@@ -52,27 +57,31 @@ function KeyValueRow({ label, value, isEditing, onChangeText, multiline, keyboar
 
 // ── MedicationRow ──
 function MedicationRow({ med, index, isEditing, onUpdate, onRemove }) {
+  const medicationName = med?.n || med?.name || '';
+  const medicationDose = med?.d || med?.dose || '';
+  const medicationRoute = med?.r || med?.route || '';
+
   if (isEditing) {
     return (
       <View style={styles.medEditRow}>
         <View style={styles.medEditFields}>
           <TextInput
             style={styles.medInput}
-            value={med.n}
+            value={medicationName}
             onChangeText={(t) => onUpdate(index, 'n', t)}
             placeholder="Drug"
             placeholderTextColor={Colors.textSecondary}
           />
           <TextInput
             style={[styles.medInput, styles.medInputSmall]}
-            value={med.d}
+            value={medicationDose}
             onChangeText={(t) => onUpdate(index, 'd', t)}
             placeholder="Dose"
             placeholderTextColor={Colors.textSecondary}
           />
           <TextInput
             style={[styles.medInput, styles.medInputSmall]}
-            value={med.r}
+            value={medicationRoute}
             onChangeText={(t) => onUpdate(index, 'r', t)}
             placeholder="Route"
             placeholderTextColor={Colors.textSecondary}
@@ -84,9 +93,11 @@ function MedicationRow({ med, index, isEditing, onUpdate, onRemove }) {
       </View>
     );
   }
+
+  const displayParts = [medicationName, medicationDose, medicationRoute].filter(Boolean);
   return (
     <Text style={styles.medDisplayText}>
-      {'  •  '}{med.n} — {med.d} — {med.r}
+      {'  •  '}{displayParts.length > 0 ? displayParts.join(' — ') : 'Unknown medication'}
     </Text>
   );
 }
@@ -95,7 +106,6 @@ function MedicationRow({ med, index, isEditing, onUpdate, onRemove }) {
 //   MAIN SCREEN
 // ════════════════════════════════════════════════════════════
 export default function ScanResultScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams();
 
   let initialData = {};
@@ -111,8 +121,56 @@ export default function ScanResultScreen() {
   const [showAckModal, setShowAckModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [recordLoading, setRecordLoading] = useState(false);
+  const [activeVersionTimestamp, setActiveVersionTimestamp] = useState(initialData.submissionTimestamp || null);
+  const [isHistoricalView, setIsHistoricalView] = useState(false);
 
   const transferId = record._id;
+  const pid = record.pid || initialData.pid;
+
+  const refreshTimeline = useCallback(async (patientId) => {
+    if (!patientId) return;
+    setTimelineLoading(true);
+    const timelineResult = await getTransferTimelineByPid(patientId);
+    setTimelineLoading(false);
+
+    if (timelineResult.success) {
+      setTimeline(timelineResult.data || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCurrent = async () => {
+      if (!pid) return;
+      setRecordLoading(true);
+
+      const currentResult = await getCurrentTransferByPid(pid);
+      if (isMounted && currentResult.success && currentResult.data) {
+        setRecord(currentResult.data);
+        setEditDraft(currentResult.data);
+        setActiveVersionTimestamp(currentResult.data.submissionTimestamp || null);
+        setIsHistoricalView(false);
+      }
+
+      if (isMounted) {
+        setRecordLoading(false);
+      }
+
+      if (isMounted) {
+        await refreshTimeline(pid);
+      }
+    };
+
+    loadCurrent();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pid, refreshTimeline]);
 
   // ── Edit helpers ──
   const updateDraftField = useCallback((field, value) => {
@@ -150,6 +208,10 @@ export default function ScanResultScreen() {
   }, []);
 
   const startEditing = () => {
+    if (isHistoricalView) {
+      Alert.alert('Read-only version', 'Historical timeline snapshots cannot be edited.');
+      return;
+    }
     setEditDraft({ ...record });
     setIsEditing(true);
     setSaveError(null);
@@ -162,8 +224,15 @@ export default function ScanResultScreen() {
   };
 
   const handleSave = async () => {
+    if (!transferId) {
+      setSaveError('Current record ID is missing. Please rescan the QR and try again.');
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
+
+    const updateTimestamp = Date.now();
 
     const payload = {
       pid: editDraft.pid,
@@ -180,6 +249,7 @@ export default function ScanResultScreen() {
         ? editDraft.pi.split(',').map((s) => s.trim()).filter(Boolean)
         : editDraft.pi,
       sum: editDraft.sum,
+      timestamp: updateTimestamp,
     };
 
     const result = await updateTransfer(transferId, payload);
@@ -189,11 +259,57 @@ export default function ScanResultScreen() {
       const updatedRecord = result.data || { ...record, ...payload };
       setRecord(updatedRecord);
       setEditDraft(updatedRecord);
+      setActiveVersionTimestamp(updatedRecord.submissionTimestamp || updateTimestamp);
+      setIsHistoricalView(false);
       setIsEditing(false);
+      await refreshTimeline(updatedRecord.pid || pid);
       Alert.alert('Success', 'Record updated successfully.');
     } else {
       setSaveError(result.error);
     }
+  };
+
+  const openTimelineVersion = async (timestamp) => {
+    if (!pid || !timestamp) return;
+
+    if (timestamp === activeVersionTimestamp && isHistoricalView) {
+      return;
+    }
+
+    setRecordLoading(true);
+    const versionResult = await getTransferVersionByTimestamp(pid, timestamp);
+    setRecordLoading(false);
+
+    if (!versionResult.success) {
+      Alert.alert('Unable to open version', versionResult.error || 'Failed to load version snapshot.');
+      return;
+    }
+
+    const versionRecord = versionResult.data;
+    setRecord(versionRecord);
+    setEditDraft(versionRecord);
+    setActiveVersionTimestamp(versionRecord.submissionTimestamp || timestamp);
+    setIsEditing(false);
+    setIsHistoricalView(!versionRecord.isCurrent);
+  };
+
+  const goToCurrentVersion = async () => {
+    if (!pid) return;
+    setRecordLoading(true);
+    const currentResult = await getCurrentTransferByPid(pid);
+    setRecordLoading(false);
+
+    if (!currentResult.success || !currentResult.data) {
+      Alert.alert('Unable to load current version', currentResult.error || 'Please rescan the QR and try again.');
+      return;
+    }
+
+    setRecord(currentResult.data);
+    setEditDraft(currentResult.data);
+    setActiveVersionTimestamp(currentResult.data.submissionTimestamp || null);
+    setIsHistoricalView(false);
+    setIsEditing(false);
+    await refreshTimeline(pid);
   };
 
   const handleAcknowledgeSuccess = () => {
@@ -217,7 +333,9 @@ export default function ScanResultScreen() {
     const parts = [];
     if (vit.hr) parts.push(`HR: ${vit.hr} bpm`);
     if (vit.bp) parts.push(`BP: ${vit.bp} mmHg`);
-    return parts.length > 0 ? parts.join('   |   ') : '—';
+    if (parts.length > 0) return parts.join('   |   ');
+    if (typeof vit.raw === 'string' && vit.raw.trim().length > 0) return vit.raw;
+    return '—';
   };
 
   const getAllergiesEditValue = () => {
@@ -228,6 +346,11 @@ export default function ScanResultScreen() {
   const getPiEditValue = () => {
     if (typeof editDraft.pi === 'string') return editDraft.pi;
     return Array.isArray(editDraft.pi) ? editDraft.pi.join(', ') : '';
+  };
+
+  const formatVersionDate = (timestamp) => {
+    if (!timestamp) return 'Unknown timestamp';
+    return new Date(timestamp).toLocaleString();
   };
 
   // ════════════════════════════════════════════════════════
@@ -243,6 +366,48 @@ export default function ScanResultScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        {recordLoading && (
+          <View style={styles.loadingBanner}>
+            <ActivityIndicator size="small" color={Colors.surface} />
+            <Text style={styles.loadingBannerText}>Loading transfer version...</Text>
+          </View>
+        )}
+
+        <View style={styles.timelineContainer}>
+          <Text style={styles.timelineHeading}>Version Timeline</Text>
+          {timelineLoading ? (
+            <Text style={styles.timelineMeta}>Fetching timeline...</Text>
+          ) : timeline.length === 0 ? (
+            <Text style={styles.timelineMeta}>No saved timeline versions found.</Text>
+          ) : (
+            timeline.map((entry) => {
+              const isActive = entry.submissionTimestamp === activeVersionTimestamp;
+              return (
+                <TouchableOpacity
+                  key={entry._id}
+                  onPress={() => openTimelineVersion(entry.submissionTimestamp)}
+                  style={[styles.timelineItem, isActive && styles.timelineItemActive]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.timelineItemTitle}>
+                    {entry.isCurrent ? 'Current Version' : 'Historical Snapshot'}
+                  </Text>
+                  <Text style={styles.timelineItemMeta}>{formatVersionDate(entry.submissionTimestamp)}</Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
+
+          {isHistoricalView && (
+            <View style={styles.readOnlyBanner}>
+              <Text style={styles.readOnlyText}>You are viewing a read-only historical snapshot.</Text>
+              <TouchableOpacity onPress={goToCurrentVersion} style={styles.currentVersionBtn} activeOpacity={0.8}>
+                <Text style={styles.currentVersionBtnText}>Open Current Editable Version</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         {/* ═══ CRITICAL SECTION ═══ */}
 
         {/* 1. ALLERGIES */}
@@ -409,7 +574,7 @@ export default function ScanResultScreen() {
                 <Text style={[styles.actionButtonText, { color: Colors.primary }]}>Cancel</Text>
               </TouchableOpacity>
             </>
-          ) : (
+          ) : !isHistoricalView ? (
             <>
               <TouchableOpacity
                 style={[styles.actionButton, styles.acknowledgeButton]}
@@ -424,7 +589,7 @@ export default function ScanResultScreen() {
                 <Text style={styles.actionButtonText}>Update / Edit Record</Text>
               </TouchableOpacity>
             </>
-          )}
+          ) : null}
         </View>
       </ScrollView>
 
@@ -442,6 +607,91 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
+
+  loadingBanner: {
+    margin: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingBannerText: {
+    marginLeft: 10,
+    color: Colors.surface,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  timelineContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  timelineHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  timelineMeta: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  timelineItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 8,
+    backgroundColor: Colors.background,
+  },
+  timelineItemActive: {
+    borderColor: Colors.primary,
+    backgroundColor: '#EAF2FF',
+  },
+  timelineItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  timelineItemMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  readOnlyBanner: {
+    marginTop: 4,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFDF7E',
+  },
+  readOnlyText: {
+    fontSize: 13,
+    color: '#8A6D1F',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  currentVersionBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  currentVersionBtnText: {
+    color: Colors.surface,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 
   // Critical strips
   allergyStrip: {

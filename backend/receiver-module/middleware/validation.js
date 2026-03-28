@@ -3,6 +3,58 @@
  * Keeps route handlers clean by extracting validation logic.
  */
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Validate the POST /transfers request body.
+ * Accepts both verbose frontend keys and compact backend keys.
+ */
+function validateCreateTransfer(req, res, next) {
+  const { body } = req;
+
+  if (!body || typeof body !== 'object') {
+    return res.status(400).json({
+      success: false,
+      error: 'Request body is required',
+    });
+  }
+
+  const patientId = body.pid || body.patientId;
+  const patientName = body.nam || body.patientName;
+
+  if (!isNonEmptyString(patientId)) {
+    return res.status(400).json({
+      success: false,
+      error: 'patientId (or pid) is required',
+    });
+  }
+
+  if (!isNonEmptyString(patientName)) {
+    return res.status(400).json({
+      success: false,
+      error: 'patientName (or nam) is required',
+    });
+  }
+
+  if (body.submissionTimestamp !== undefined && typeof body.submissionTimestamp !== 'number') {
+    return res.status(400).json({
+      success: false,
+      error: 'submissionTimestamp must be a number',
+    });
+  }
+
+  if (body.timestamp !== undefined && typeof body.timestamp !== 'number') {
+    return res.status(400).json({
+      success: false,
+      error: 'timestamp must be a number',
+    });
+  }
+
+  next();
+}
+
 /**
  * Validate the POST /transfers/:id/acknowledge request body.
  * Requires: timestamp (number).
@@ -109,4 +161,18 @@ function validateUpdate(req, res, next) {
   next();
 }
 
-module.exports = { validateAcknowledge, validateUpdate };
+/**
+ * Validate timestamp used to identify a unique update version.
+ */
+function validateUpdateTimestamp(req, res, next) {
+  if (req.body.timestamp !== undefined && typeof req.body.timestamp !== 'number') {
+    return res.status(400).json({
+      success: false,
+      error: 'timestamp must be a number',
+    });
+  }
+
+  next();
+}
+
+module.exports = { validateCreateTransfer, validateAcknowledge, validateUpdate, validateUpdateTimestamp };

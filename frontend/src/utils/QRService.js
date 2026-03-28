@@ -4,6 +4,7 @@ import LZString from 'lz-string';
 export const MinificationMap = {
   patientId: 'i',
   patientName: 'pn',
+  age: 'ag',
   primaryDiagnosis: 'dx',
   activeMedications: 'md',
   allergies: 'al',
@@ -66,9 +67,13 @@ export const generatePayload = (formData) => {
   const dx = formData.primaryDiagnosis || 'None';
   const allergy = formData.allergies || 'None';
   const summary = formData.clinicalSummary || 'No summary provided';
+  const age = formData.age || 'No Age given';
+  const activeMedications = formData.activeMedications || 'No Data Provided';
 
+  
+  
   // Return the strict formatting required
-  return `[MEDRELAY]\nName: ${patientName}\nDX: ${dx}\nAllergy: ${allergy}\nSummary: ${summary}\nDATA:${compressed}`;
+  return `[MEDRELAY]\nName: ${patientName}\nAge: ${age}\nDX: ${dx}\nAllergy: ${allergy}\nActive Medications: ${activeMedications}\nSummary: ${summary}\nDATA:${compressed}`;
 };
 
 /**

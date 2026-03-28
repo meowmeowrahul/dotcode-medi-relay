@@ -312,8 +312,14 @@ export default function ScanResultScreen() {
     await refreshTimeline(pid);
   };
 
-  const handleAcknowledgeSuccess = () => {
+  const handleAcknowledgeSuccess = async (acknowledgedRecord) => {
     setShowAckModal(false);
+    if (acknowledgedRecord) {
+      setRecord(acknowledgedRecord);
+      setEditDraft(acknowledgedRecord);
+      setActiveVersionTimestamp(acknowledgedRecord.submissionTimestamp || activeVersionTimestamp);
+    }
+    await refreshTimeline(pid);
     Alert.alert('Acknowledged', 'Transfer receipt has been acknowledged and recorded.');
   };
 
@@ -393,6 +399,16 @@ export default function ScanResultScreen() {
                     {entry.isCurrent ? 'Current Version' : 'Historical Snapshot'}
                   </Text>
                   <Text style={styles.timelineItemMeta}>{formatVersionDate(entry.submissionTimestamp)}</Text>
+                  <Text
+                    style={[
+                      styles.timelineAckStatus,
+                      entry.acknowledgementStatus === 'ACKNOWLEDGED'
+                        ? styles.timelineAckStatusAck
+                        : styles.timelineAckStatusUnack,
+                    ]}
+                  >
+                    {entry.acknowledgementStatus === 'ACKNOWLEDGED' ? 'Acknowledged' : 'Unacknowledged'}
+                  </Text>
                 </TouchableOpacity>
               );
             })
@@ -665,6 +681,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: Colors.textSecondary,
+  },
+  timelineAckStatus: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  timelineAckStatusAck: {
+    color: '#1E7A43',
+  },
+  timelineAckStatusUnack: {
+    color: '#A13A2A',
   },
   readOnlyBanner: {
     marginTop: 4,

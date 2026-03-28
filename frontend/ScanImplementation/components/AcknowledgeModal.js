@@ -37,7 +37,7 @@ export default function AcknowledgeModal({ visible, transferId, onClose, onSucce
       setArrivalNote('');
       setDiscrepancies('');
       setError(null);
-      onSuccess();
+      onSuccess(result.data);
     } else {
       setError(result.error);
     }
@@ -90,7 +90,7 @@ export default function AcknowledgeModal({ visible, transferId, onClose, onSucce
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Flag Discrepancies</Text>
               <Text style={styles.fieldHint}>
-                Note any differences between the transfer record and patient's actual condition.
+                Note any differences between the transfer record and patient&apos;s actual condition.
               </Text>
               <TextInput
                 style={[styles.textInput, styles.textInputMultiline]}

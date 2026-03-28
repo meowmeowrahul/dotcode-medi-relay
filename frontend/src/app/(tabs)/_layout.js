@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Drawer } from 'expo-router/drawer';
+import { Redirect, useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { Colors } from '../../constants/Theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+<<<<<<< HEAD
 import { useAuth } from '../../contexts/AuthContext';
+=======
+import { clearSessionState, getSessionState, subscribeSession } from '../../state/userSession';
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
 
 function DrawerLabel({ title, subtitle }) {
   return (
@@ -15,6 +20,7 @@ function DrawerLabel({ title, subtitle }) {
   );
 }
 
+<<<<<<< HEAD
 function ProfileSection({ onToggleMenu, menuOpen }) {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
@@ -26,6 +32,17 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
   const handleLogout = async () => {
     await logout();
   };
+=======
+function ProfileSection({ onToggleMenu, menuOpen, user, onNavigateProfile, onLogout }) {
+  const insets = useSafeAreaInsets();
+  const initials = (user?.name || 'U')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'U';
+
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
   return (
     <View style={[styles.profileContainer, { paddingBottom: insets.bottom + 8 }]}>
       <Pressable
@@ -36,20 +53,37 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.profileTextWrap}>
+<<<<<<< HEAD
           <Text style={styles.profileName}>{displayName}</Text>
           {isDoctor && hospitalName ? (
             <Text style={styles.profileMeta}>{hospitalName}</Text>
           ) : (
             <Text style={styles.profileMeta}>{isDoctor ? 'Doctor' : 'Patient'}</Text>
           )}
+=======
+          <Text style={styles.profileName}>{user?.name || 'Unknown User'}</Text>
+          {user?.role === 'doctor' && user?.hospitalName ? (
+            <Text style={styles.profileMeta}>{user.hospitalName}</Text>
+          ) : null}
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
         </View>
       </Pressable>
       {menuOpen && (
         <View style={styles.profileMenu}>
-          <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}>
+          <Pressable
+            style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+            onPress={onNavigateProfile}
+          >
             <Text style={styles.menuItemText}>Profile</Text>
           </Pressable>
+<<<<<<< HEAD
           <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]} onPress={handleLogout}>
+=======
+          <Pressable
+            style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+            onPress={onLogout}
+          >
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
             <Text style={[styles.menuItemText, { color: Colors.critical }]}>Logout</Text>
           </Pressable>
         </View>
@@ -59,8 +93,27 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
 }
 
 function CustomDrawerContent(props) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [session, setSession] = useState(getSessionState());
+
+  React.useEffect(() => {
+    return subscribeSession(setSession);
+  }, []);
+
   const toggleMenu = () => setMenuOpen(prev => !prev);
+
+  const handleProfileNavigate = () => {
+    setMenuOpen(false);
+    props.navigation.navigate('profile');
+  };
+
+  const handleLogout = () => {
+    clearSessionState();
+    setMenuOpen(false);
+    props.navigation.closeDrawer();
+    router.replace('/login');
+  };
 
   return (
     <DrawerContentScrollView
@@ -90,12 +143,28 @@ function CustomDrawerContent(props) {
         />
       </View>
 
-      <ProfileSection onToggleMenu={toggleMenu} menuOpen={menuOpen} />
+      <ProfileSection
+        onToggleMenu={toggleMenu}
+        menuOpen={menuOpen}
+        user={session.user}
+        onNavigateProfile={handleProfileNavigate}
+        onLogout={handleLogout}
+      />
     </DrawerContentScrollView>
   );
 }
 
 export default function DrawerLayout() {
+  const [session, setSession] = useState(getSessionState());
+
+  React.useEffect(() => {
+    return subscribeSession(setSession);
+  }, []);
+
+  if (!session.isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Drawer
       screenOptions={{
@@ -131,6 +200,30 @@ export default function DrawerLayout() {
         options={{
           title: 'History',
           headerTitle: 'History',
+        }}
+      />
+      <Drawer.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerTitle: 'Profile',
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
+      <Drawer.Screen
+        name="scanner"
+        options={{
+          title: 'Scanner',
+          headerTitle: 'Scan Transfer QR',
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
+      <Drawer.Screen
+        name="scan-result"
+        options={{
+          title: 'Scan Result',
+          headerTitle: 'Patient Transfer Record',
+          drawerItemStyle: { display: 'none' },
         }}
       />
     </Drawer>

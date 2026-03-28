@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,7 @@ export default function ScannerScreen() {
     try {
       const parsed = decompressQRPayload(data);
       router.replace({
-        pathname: '/scan-result',
+        pathname: '/(tabs)/scan-result',
         params: { data: JSON.stringify(parsed) },
       });
     } catch (err) {

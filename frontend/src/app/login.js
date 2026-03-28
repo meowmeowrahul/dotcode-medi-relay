@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -30,11 +31,32 @@ export default function LoginScreen() {
     }
     const { token, user } = result.data;
     await saveAuth(token, user);
+=======
+import React from 'react';
+import { View, StyleSheet, Text } from 'react-native';
+import { useRouter, Redirect } from 'expo-router';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Colors } from '../constants/Theme';
+import { getSessionState, restoreDemoSession } from '../state/userSession';
+
+export default function LoginScreen() {
+  const router = useRouter();
+  const session = getSessionState();
+
+  if (session.isAuthenticated) {
+    return <Redirect href="/(tabs)" />;
+  }
+
+  const handleLogin = () => {
+    restoreDemoSession();
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
     router.replace('/(tabs)');
   };
 
   return (
     <View style={styles.container}>
+<<<<<<< HEAD
       <Text style={styles.title}>Welcome back</Text>
       <Text style={styles.subtitle}>Sign in to continue</Text>
 
@@ -84,6 +106,13 @@ export default function LoginScreen() {
       <Pressable onPress={() => router.push('/register')} style={{ marginTop: 16 }}>
         <Text style={styles.link}>New here? Create an account</Text>
       </Pressable>
+=======
+      <Card style={styles.card}>
+        <Text style={styles.title}>Medi Relay</Text>
+        <Text style={styles.subtitle}>Sign in to continue to clinical handoff tools.</Text>
+        <Button title="Sign In" onPress={handleLogin} />
+      </Card>
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
     </View>
   );
 }
@@ -91,6 +120,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+<<<<<<< HEAD
     padding: 24,
     backgroundColor: Colors.background,
   },
@@ -149,5 +179,25 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '600',
     textAlign: 'center',
+=======
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  card: {
+    marginBottom: 0,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: Colors.textSecondary,
+    marginBottom: 16,
+    fontSize: 14,
+    lineHeight: 20,
+>>>>>>> 4c1612deaf4d47488e4b360322e26ee92b497901
   },
 });

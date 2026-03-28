@@ -10,7 +10,7 @@ export default function ReceiverTab() {
   const router = useRouter();
 
   const handleOpenScanner = () => {
-    router.push('/scanner');
+    router.push('/(tabs)/scanner');
   };
 
   return (

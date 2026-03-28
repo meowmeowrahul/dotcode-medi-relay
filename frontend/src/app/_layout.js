@@ -32,6 +32,21 @@ export default function RootLayout() {
           name="transfer/[id]" 
           options={{ title: 'Patient Handoff Record', headerBackTitle: 'Back' }} 
         />
+        <Stack.Screen 
+          name="scanner" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }} 
+        />
+        <Stack.Screen 
+          name="scan-result" 
+          options={{ 
+            title: 'Patient Transfer Record',
+            headerBackTitle: 'Back',
+          }} 
+        />
       </Stack>
     </>
   );

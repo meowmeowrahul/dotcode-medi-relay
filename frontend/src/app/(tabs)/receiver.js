@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -9,10 +9,8 @@ import { Colors } from '../../constants/Theme';
 export default function ReceiverTab() {
   const router = useRouter();
 
-  const handleScanSimulation = () => {
-    Alert.alert('Simulating Camera Scan...', 'Navigating to parsed patient record [123]');
-    // Simulating scanning a QR code which routes to transfer/[id]
-    router.push('/transfer/123');
+  const handleOpenScanner = () => {
+    router.push('/scanner');
   };
 
   return (
@@ -22,7 +20,7 @@ export default function ReceiverTab() {
         <Body1 style={{ marginBottom: 24 }}>
           Scan a QR code from the transferring ambulance or hospital to immediately access the critical handoff record.
         </Body1>
-        <Button title="Simulate QR Scan" onPress={handleScanSimulation} variant="primary" />
+        <Button title="Scan Transfer QR" onPress={handleOpenScanner} variant="primary" />
       </Card>
       
       <Card style={{ marginTop: 16 }}>

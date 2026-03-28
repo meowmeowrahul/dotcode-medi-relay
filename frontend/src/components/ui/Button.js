@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/Theme';
 
-export const Button = ({ title, onPress, variant = 'primary', style }) => {
+export const Button = ({ title, onPress, variant = 'primary', style, disabled = false }) => {
   const getBackgroundColor = () => {
     switch (variant) {
       case 'secondary': return Colors.secondary;
@@ -24,9 +24,11 @@ export const Button = ({ title, onPress, variant = 'primary', style }) => {
         styles.button, 
         { backgroundColor: getBackgroundColor() },
         variant === 'outline' && styles.outline,
+        disabled && styles.disabled,
         style
       ]} 
       onPress={onPress}
+      disabled={disabled}
       activeOpacity={0.8}
     >
       <Text style={[styles.text, { color: getTextColor() }]}>{title}</Text>
@@ -50,5 +52,8 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  disabled: {
+    opacity: 0.55,
   }
 });

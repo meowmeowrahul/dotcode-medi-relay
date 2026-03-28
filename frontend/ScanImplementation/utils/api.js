@@ -184,3 +184,52 @@ export async function listTransfers({ status, limit = 200, skip = 0 } = {}) {
     return { success: false, error: error.message };
   }
 }
+
+export async function getUserProfile() {
+  try {
+    const response = await fetch(`${API_BASE}/user/profile`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateUserProfile(payload) {
+  try {
+    const response = await fetch(`${API_BASE}/user/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteUserProfile() {
+  try {
+    const response = await fetch(`${API_BASE}/user/profile`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}

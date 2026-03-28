@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
 import { Drawer } from 'expo-router/drawer';
+import { Redirect, useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { Colors } from '../../constants/Theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const USER = {
-  name: 'Dr. Aria Patel',
-  hospitalName: 'City Care Medical Center',
-  isDoctor: true,
-};
+import { clearSessionState, getSessionState, subscribeSession } from '../../state/userSession';
 
 function DrawerLabel({ title, subtitle }) {
   return (
@@ -20,8 +16,15 @@ function DrawerLabel({ title, subtitle }) {
   );
 }
 
-function ProfileSection({ onToggleMenu, menuOpen }) {
+function ProfileSection({ onToggleMenu, menuOpen, user, onNavigateProfile, onLogout }) {
   const insets = useSafeAreaInsets();
+  const initials = (user?.name || 'U')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'U';
+
   return (
     <View style={[styles.profileContainer, { paddingBottom: insets.bottom + 8 }]}>
       <Pressable
@@ -29,21 +32,27 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
         style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{USER.name.slice(0, 2).toUpperCase()}</Text>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.profileTextWrap}>
-          <Text style={styles.profileName}>{USER.name}</Text>
-          {USER.isDoctor && USER.hospitalName ? (
-            <Text style={styles.profileMeta}>{USER.hospitalName}</Text>
+          <Text style={styles.profileName}>{user?.name || 'Unknown User'}</Text>
+          {user?.role === 'doctor' && user?.hospitalName ? (
+            <Text style={styles.profileMeta}>{user.hospitalName}</Text>
           ) : null}
         </View>
       </Pressable>
       {menuOpen && (
         <View style={styles.profileMenu}>
-          <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}>
+          <Pressable
+            style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+            onPress={onNavigateProfile}
+          >
             <Text style={styles.menuItemText}>Profile</Text>
           </Pressable>
-          <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}>
+          <Pressable
+            style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+            onPress={onLogout}
+          >
             <Text style={[styles.menuItemText, { color: Colors.critical }]}>Logout</Text>
           </Pressable>
         </View>
@@ -53,8 +62,27 @@ function ProfileSection({ onToggleMenu, menuOpen }) {
 }
 
 function CustomDrawerContent(props) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [session, setSession] = useState(getSessionState());
+
+  React.useEffect(() => {
+    return subscribeSession(setSession);
+  }, []);
+
   const toggleMenu = () => setMenuOpen(prev => !prev);
+
+  const handleProfileNavigate = () => {
+    setMenuOpen(false);
+    props.navigation.navigate('profile');
+  };
+
+  const handleLogout = () => {
+    clearSessionState();
+    setMenuOpen(false);
+    props.navigation.closeDrawer();
+    router.replace('/login');
+  };
 
   return (
     <DrawerContentScrollView
@@ -84,12 +112,28 @@ function CustomDrawerContent(props) {
         />
       </View>
 
-      <ProfileSection onToggleMenu={toggleMenu} menuOpen={menuOpen} />
+      <ProfileSection
+        onToggleMenu={toggleMenu}
+        menuOpen={menuOpen}
+        user={session.user}
+        onNavigateProfile={handleProfileNavigate}
+        onLogout={handleLogout}
+      />
     </DrawerContentScrollView>
   );
 }
 
 export default function DrawerLayout() {
+  const [session, setSession] = useState(getSessionState());
+
+  React.useEffect(() => {
+    return subscribeSession(setSession);
+  }, []);
+
+  if (!session.isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Drawer
       screenOptions={{
@@ -125,6 +169,14 @@ export default function DrawerLayout() {
         options={{
           title: 'History',
           headerTitle: 'History',
+        }}
+      />
+      <Drawer.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerTitle: 'Profile',
+          drawerItemStyle: { display: 'none' },
         }}
       />
       <Drawer.Screen

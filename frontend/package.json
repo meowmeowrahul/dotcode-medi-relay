@@ -11,11 +11,16 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo/metro-runtime": "55.0.8-canary-20260327-0789fbc",
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
     "@react-navigation/native": "^7.1.33",
     "expo": "55.0.10-canary-20260327-0789fbc",
+<<<<<<< HEAD
     "expo-camera": "55.0.12-canary-20260327-0789fbc",
+=======
+    "expo-av": "^14.0.7",
+>>>>>>> 125daaa725c011e1c1842324f291a9e4ad18bd13
     "expo-constants": "55.0.10-canary-20260327-0789fbc",
     "expo-device": "55.0.11-canary-20260327-0789fbc",
     "expo-font": "55.0.5-canary-20260327-0789fbc",
@@ -23,6 +28,7 @@
     "expo-image": "55.0.7-canary-20260327-0789fbc",
     "expo-linking": "55.0.10-canary-20260327-0789fbc",
     "expo-router": "55.0.9-canary-20260327-0789fbc",
+    "expo-speech": "55.0.10-canary-20260327-0789fbc",
     "expo-splash-screen": "55.0.14-canary-20260327-0789fbc",
     "expo-status-bar": "55.0.5-canary-20260327-0789fbc",
     "expo-symbols": "55.0.6-canary-20260327-0789fbc",
@@ -33,6 +39,10 @@
     "react-dom": "19.2.0",
     "react-native": "0.83.4",
     "react-native-gesture-handler": "~2.30.0",
+<<<<<<< HEAD
+=======
+    "react-native-qrcode-svg": "^6.3.21",
+>>>>>>> 125daaa725c011e1c1842324f291a9e4ad18bd13
     "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
@@ -41,6 +51,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "55.0.1-canary-20260327-0789fbc",
     "typescript": "~5.9.2"
   },
   "private": true

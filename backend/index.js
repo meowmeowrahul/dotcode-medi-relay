@@ -12,11 +12,14 @@ app.use(express.json());
 
 // MongoDB Connection
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Routes
+const transferRoutes = require('./receiver-module/routes/transfers');
+app.use('/api/transfers', transferRoutes);
+
 app.get("/", (req, res) => {
   res.json({ message: "MediRelay API is running" });
 });

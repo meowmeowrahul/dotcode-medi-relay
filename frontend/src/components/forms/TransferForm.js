@@ -13,8 +13,14 @@ import { Button } from '../ui/Button';
 import { H2, Body1 } from '../ui/Typography';
 import { Colors } from '../../constants/Theme';
 
+const SUMMARY_MAX_CHARACTERS = 200;
+
 export const TransferForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
+    doctorId: '',
+    fromHospital: '',
+    toHospital: '',
+    bloodGroup: '',
     patientName: '',
     age: '',
     patientId: '',
@@ -96,6 +102,11 @@ export const TransferForm = ({ onSubmit }) => {
 
     return {
       ...formData,
+      did: String(formData.doctorId || '').trim() || undefined,
+      doctorId: String(formData.doctorId || '').trim() || undefined,
+      fromHospital: String(formData.fromHospital || '').trim(),
+      toHospital: String(formData.toHospital || '').trim(),
+      bloodGroup: String(formData.bloodGroup || '').trim(),
       med: normalizedMedications,
       vit: normalizedVitals,
       activeMedications: medicationSummary,
@@ -104,23 +115,26 @@ export const TransferForm = ({ onSubmit }) => {
     };
   };
 
-  const wordCount = useMemo(() => {
-    if (!formData.clinicalSummary.trim()) return 0;
-    return formData.clinicalSummary.trim().split(/\s+/).length;
+  const summaryCharCount = useMemo(() => {
+    return String(formData.clinicalSummary || '').length;
   }, [formData.clinicalSummary]);
 
-  const applySummaryWithLimit = (text) => {
-    const words = text.trim().split(/\s+/).filter(Boolean);
-    const limitedWords = words.slice(0, 200);
-    const limitedText = limitedWords.join(' ');
-    setFormData(prev => ({ ...prev, clinicalSummary: limitedText }));
-    if (words.length > 200) {
-      Alert.alert('Summary truncated', 'Only the first 200 words were kept.');
-    }
-  };
+  const isSummaryOverLimit = summaryCharCount > SUMMARY_MAX_CHARACTERS;
 
   const handleSummaryChange = (value) => {
-    applySummaryWithLimit(value);
+    setFormData((prev) => ({ ...prev, clinicalSummary: value }));
+  };
+
+  const handleSubmit = () => {
+    if (isSummaryOverLimit) {
+      Alert.alert(
+        'Summary too long',
+        `Clinical Summary must be ${SUMMARY_MAX_CHARACTERS} characters or fewer (including spaces and line breaks).`
+      );
+      return;
+    }
+
+    onSubmit(buildSubmitPayload());
   };
 
   const startVoiceDictation = () => {
@@ -131,6 +145,30 @@ export const TransferForm = ({ onSubmit }) => {
     <ScrollView style={styles.container}>
       <Card>
         <H2 style={styles.header}>Patient Identifiers</H2>
+        <TextInput
+          style={styles.input}
+          placeholder="Doctor ID"
+          value={formData.doctorId}
+          onChangeText={(val) => handleChange('doctorId', val)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="From Hospital"
+          value={formData.fromHospital}
+          onChangeText={(val) => handleChange('fromHospital', val)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="To Hospital"
+          value={formData.toHospital}
+          onChangeText={(val) => handleChange('toHospital', val)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Blood Group (e.g. O+, AB-)"
+          value={formData.bloodGroup}
+          onChangeText={(val) => handleChange('bloodGroup', val)}
+        />
         <TextInput
           style={styles.input}
           placeholder="Full name"
@@ -236,7 +274,7 @@ export const TransferForm = ({ onSubmit }) => {
 
       <Card>
         <View style={styles.summaryHeader}>
-          <H2 style={styles.header}>Clinical Summary (max 200 words)</H2>
+          <H2 style={styles.header}>Clinical Summary (max 200 characters)</H2>
           <TouchableOpacity style={styles.micButton} onPress={startVoiceDictation} disabled={!voiceDictationEnabled}>
             <Text style={[styles.micIcon, isListening && styles.micActive]}>{isListening ? '●' : '🎤'}</Text>
           </TouchableOpacity>
@@ -249,10 +287,12 @@ export const TransferForm = ({ onSubmit }) => {
           value={formData.clinicalSummary}
           onChangeText={handleSummaryChange}
         />
-        <Body1 style={styles.helperText}>{wordCount}/200 words</Body1>
+        <Body1 style={[styles.helperText, isSummaryOverLimit && styles.helperTextError]}>
+          {summaryCharCount}/{SUMMARY_MAX_CHARACTERS} characters
+        </Body1>
       </Card>
 
-      <Button title="Generate Transfer Record" onPress={() => onSubmit(buildSubmitPayload())} style={styles.submitBtn} />
+      <Button title="Generate Transfer Record" onPress={handleSubmit} style={styles.submitBtn} />
     </ScrollView>
   );
 };
@@ -289,6 +329,9 @@ const styles = StyleSheet.create({
   helperText: {
     textAlign: 'right',
     color: Colors.textSecondary,
+  },
+  helperTextError: {
+    color: '#B00020',
   },
   summaryHeader: {
     flexDirection: 'row',

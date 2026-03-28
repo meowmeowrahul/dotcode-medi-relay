@@ -4,32 +4,32 @@ import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui/Card';
 import { Colors } from '../../constants/Theme';
 import { listDoctorIssuedTransfers, listPatientPastTransfers } from '../../../ScanImplementation/utils/api';
-import { getSessionState, subscribeSession } from '../../state/userSession';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function HistoryTab() {
   const router = useRouter();
-  const [session, setSession] = useState(getSessionState());
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [groupedTimeline, setGroupedTimeline] = useState([]);
 
-  useEffect(() => {
-    return subscribeSession(setSession);
-  }, []);
+  const loadTimeline = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
-  const loadTimeline = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    const role = session.user?.role || 'doctor';
-    const did = session.user?.did || 'DOC-DEMO-001';
-    const pid = session.user?.pid || 'PID-DEMO-001';
+    const role = user?.role || 'doctor';
+    const did = user?.did || 'DOC-DEMO-001';
+    const pid = user?.pid || 'PID-DEMO-001';
 
     const result = role === 'patient'
       ? await listPatientPastTransfers(pid, { limit: 300, skip: 0 })
       : await listDoctorIssuedTransfers(did, { limit: 300, skip: 0 });
 
-    setLoading(false);
+    if (!silent) {
+      setLoading(false);
+    }
 
     if (!result.success) {
       setError(result.error || 'Failed to load role-based history timeline.');
@@ -57,10 +57,18 @@ export default function HistoryTab() {
       });
 
     setGroupedTimeline(sortedGroups);
-  }, [session.user]);
+  }, [user]);
 
   useEffect(() => {
     loadTimeline();
+  }, [loadTimeline]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadTimeline({ silent: true });
+    }, 2000);
+
+    return () => clearInterval(intervalId);
   }, [loadTimeline]);
 
   const formatVersionDate = (timestamp) => {
@@ -85,7 +93,7 @@ export default function HistoryTab() {
       ) : error ? (
         <Card>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadTimeline} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadTimeline()} activeOpacity={0.8}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </Card>

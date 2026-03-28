@@ -2,6 +2,10 @@ import LZString from 'lz-string';
 
 // Map to compress the JSON keys for the payload
 export const MinificationMap = {
+  doctorId: 'di',
+  fromHospital: 'fh',
+  toHospital: 'th',
+  bloodGroup: 'bg',
   patientId: 'i',
   patientName: 'pn',
   age: 'ag',
@@ -64,6 +68,10 @@ export const generatePayload = (formData) => {
   // Build the human-readable header that native cameras can parse
   // using default Fallback strings to avoid undefined
   const patientName = formData.patientName || 'Unknown Patient';
+  const doctorId = formData.doctorId || formData.did || 'Unknown Doctor';
+  const fromHospital = formData.fromHospital || 'Unknown Source';
+  const toHospital = formData.toHospital || 'Unknown Destination';
+  const bloodGroup = formData.bloodGroup || 'Unknown';
   const dx = formData.primaryDiagnosis || 'None';
   const allergy = formData.allergies || 'None';
   const summary = formData.clinicalSummary || 'No summary provided';
@@ -85,7 +93,7 @@ export const generatePayload = (formData) => {
   
   
   // Return the strict formatting required
-  return `[MEDRELAY]\nName: ${patientName}\nAge: ${age}\nDX: ${dx}\nAllergy: ${allergy}\nActive Medications: ${activeMedications}\nSummary: ${summary}\nDATA:${compressed}`;
+  return `[MEDRELAY]\nDoctor ID: ${doctorId}\nFrom: ${fromHospital}\nTo: ${toHospital}\nBlood Group: ${bloodGroup}\nName: ${patientName}\nAge: ${age}\nDX: ${dx}\nAllergy: ${allergy}\nActive Medications: ${activeMedications}\nSummary: ${summary}\nDATA:${compressed}`;
 };
 
 /**

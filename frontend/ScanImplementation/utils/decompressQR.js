@@ -59,6 +59,10 @@ function parseVitals(value) {
 function normalizePayloadShape(parsed) {
   const expanded = {
     ...parsed,
+    doctorId: parsed.doctorId || parsed.di || parsed.did,
+    fromHospital: parsed.fromHospital || parsed.fh,
+    toHospital: parsed.toHospital || parsed.th,
+    bloodGroup: parsed.bloodGroup || parsed.bg,
     patientId: parsed.patientId || parsed.i,
     patientName: parsed.patientName || parsed.pn,
     age: parsed.age ?? parsed.ag,
@@ -73,6 +77,10 @@ function normalizePayloadShape(parsed) {
 
   const normalized = {
     ...expanded,
+    did: expanded.did || expanded.doctorId,
+    fh: expanded.fh || expanded.fromHospital,
+    th: expanded.th || expanded.toHospital,
+    bg: expanded.bg || expanded.bloodGroup,
     pid: expanded.pid || expanded.patientId,
     nam: expanded.nam || expanded.patientName,
     pd: expanded.pd || expanded.primaryDiagnosis,

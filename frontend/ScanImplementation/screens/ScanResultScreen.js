@@ -20,9 +20,13 @@ import {
   getTransferVersionByTimestamp,
 } from '../utils/api';
 import AcknowledgeModal from '../components/AcknowledgeModal';
-import { getSessionState, subscribeSession } from '../../src/state/userSession';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 const FIELD_LABELS = {
+  did: 'Doctor ID',
+  bg: 'Blood Group',
+  fh: 'From Hospital',
+  th: 'To Hospital',
   pid: 'Patient ID',
   nam: 'Patient Name',
   age: 'Age',
@@ -107,6 +111,7 @@ function MedicationRow({ med, index, isEditing, onUpdate, onRemove }) {
 //   MAIN SCREEN
 // ════════════════════════════════════════════════════════════
 export default function ScanResultScreen() {
+  const { user } = useAuth();
   const params = useLocalSearchParams();
 
   let initialData = {};
@@ -127,13 +132,7 @@ export default function ScanResultScreen() {
   const [recordLoading, setRecordLoading] = useState(false);
   const [activeVersionTimestamp, setActiveVersionTimestamp] = useState(initialData.submissionTimestamp || null);
   const [isHistoricalView, setIsHistoricalView] = useState(false);
-  const [session, setSession] = useState(getSessionState());
-
-  useEffect(() => {
-    return subscribeSession(setSession);
-  }, []);
-
-  const isPatient = session.user?.role === 'patient';
+  const isPatient = user?.role === 'patient';
 
   const transferId = record._id;
   const pid = record.pid || initialData.pid;
@@ -249,6 +248,10 @@ export default function ScanResultScreen() {
 
     const payload = {
       pid: editDraft.pid,
+      did: editDraft.did,
+      bg: editDraft.bg,
+      fh: editDraft.fh,
+      th: editDraft.th,
       nam: editDraft.nam,
       age: editDraft.age ? Number(editDraft.age) : undefined,
       pd: editDraft.pd,
@@ -502,6 +505,32 @@ export default function ScanResultScreen() {
         <View style={styles.divider} />
 
         {/* ═══ REMAINING FIELDS ═══ */}
+        <KeyValueRow
+          label={FIELD_LABELS.did}
+          value={isEditing ? editDraft.did : record.did}
+          isEditing={isEditing}
+          onChangeText={(t) => updateDraftField('did', t)}
+        />
+        <KeyValueRow
+          label={FIELD_LABELS.bg}
+          value={isEditing ? editDraft.bg : record.bg}
+          isEditing={isEditing}
+          onChangeText={(t) => updateDraftField('bg', t)}
+        />
+        <KeyValueRow
+          label={FIELD_LABELS.fh}
+          value={isEditing ? editDraft.fh : record.fh}
+          isEditing={isEditing}
+          onChangeText={(t) => updateDraftField('fh', t)}
+          multiline
+        />
+        <KeyValueRow
+          label={FIELD_LABELS.th}
+          value={isEditing ? editDraft.th : record.th}
+          isEditing={isEditing}
+          onChangeText={(t) => updateDraftField('th', t)}
+          multiline
+        />
         <KeyValueRow
           label={FIELD_LABELS.pid}
           value={isEditing ? editDraft.pid : record.pid}

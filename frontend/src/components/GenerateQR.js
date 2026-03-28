@@ -35,6 +35,7 @@ export default function GenerateQR({ formData }) {
         </View>
 
         <View style={styles.infoContainer}>
+          <Text style={styles.infoText}>Doctor ID: {formData.doctorId || formData.did || 'N/A'}</Text>
           <Text style={styles.infoText}>Patient: {formData.patientName || 'N/A'}</Text>
           <Text style={styles.infoText}>Status: <Text style={styles.syncedText}>Ready for Transfer</Text></Text>
         </View>

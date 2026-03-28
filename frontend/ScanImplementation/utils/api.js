@@ -213,7 +213,7 @@ export async function listDoctorIssuedTransfers(did, { limit = 200, skip = 0 } =
 
     const response = await fetch(`${API_BASE}/transfers/doctor/${encodeURIComponent(did)}/issued?${query.toString()}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {
@@ -233,7 +233,7 @@ export async function listPatientPastTransfers(pid, { limit = 200, skip = 0 } = 
 
     const response = await fetch(`${API_BASE}/transfers/patient/${encodeURIComponent(pid)}/past?${query.toString()}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await buildHeaders(),
     });
     const result = await parseResponse(response);
     if (!response.ok) {

@@ -41,7 +41,7 @@ export default function SenderTab() {
       setSubmitting(true);
       const payload = {
         ...data,
-        did: doctorId,
+        did: data.did || data.doctorId || doctorId,
         submissionTimestamp: Date.now(),
       };
 

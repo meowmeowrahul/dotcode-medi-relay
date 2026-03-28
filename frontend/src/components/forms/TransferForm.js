@@ -19,10 +19,10 @@ export const TransferForm = ({ onSubmit }) => {
     age: '',
     patientId: '',
     primaryDiagnosis: '',
-    activeMedications: '',
+    med: [{ n: '', d: '', r: '' }],
     allergies: '',
     transferReason: '',
-    lastVitals: '',
+    vit: { hr: '', bp: '' },
     pendingInvestigations: '',
     clinicalSummary: '',
   });
@@ -31,6 +31,77 @@ export const TransferForm = ({ onSubmit }) => {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleMedicationChange = (index, key, value) => {
+    setFormData((prev) => {
+      const meds = [...prev.med];
+      meds[index] = { ...meds[index], [key]: value };
+      return { ...prev, med: meds };
+    });
+  };
+
+  const addMedication = () => {
+    setFormData((prev) => ({
+      ...prev,
+      med: [...prev.med, { n: '', d: '', r: '' }],
+    }));
+  };
+
+  const removeMedication = (index) => {
+    setFormData((prev) => {
+      const meds = [...prev.med];
+      meds.splice(index, 1);
+      return {
+        ...prev,
+        med: meds.length > 0 ? meds : [{ n: '', d: '', r: '' }],
+      };
+    });
+  };
+
+  const handleVitalsChange = (key, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      vit: { ...prev.vit, [key]: value },
+    }));
+  };
+
+  const buildSubmitPayload = () => {
+    const normalizedMedications = (formData.med || [])
+      .map((med) => ({
+        n: String(med.n || '').trim(),
+        d: String(med.d || '').trim(),
+        r: String(med.r || '').trim(),
+      }))
+      .filter((med) => med.n || med.d || med.r)
+      .filter((med) => med.n && med.d && med.r);
+
+    const hrValue = String(formData.vit?.hr ?? '').trim();
+    const bpValue = String(formData.vit?.bp ?? '').trim();
+    const normalizedVitals = {
+      hr: hrValue ? Number.parseInt(hrValue, 10) : undefined,
+      bp: bpValue || undefined,
+    };
+
+    if (normalizedVitals.hr !== undefined && Number.isNaN(normalizedVitals.hr)) {
+      normalizedVitals.hr = undefined;
+    }
+
+    const medicationSummary = normalizedMedications
+      .map((med) => `${med.n} | ${med.d} | ${med.r}`)
+      .join('; ');
+    const vitalsSummaryParts = [];
+    if (normalizedVitals.hr !== undefined) vitalsSummaryParts.push(`HR: ${normalizedVitals.hr}`);
+    if (normalizedVitals.bp) vitalsSummaryParts.push(`BP: ${normalizedVitals.bp}`);
+
+    return {
+      ...formData,
+      med: normalizedMedications,
+      vit: normalizedVitals,
+      activeMedications: medicationSummary,
+      lastVitals: vitalsSummaryParts.join(' | '),
+      age: formData.age ? Number.parseInt(String(formData.age), 10) : undefined,
+    };
   };
 
   const wordCount = useMemo(() => {
@@ -76,6 +147,7 @@ export const TransferForm = ({ onSubmit }) => {
           style={styles.input}
           placeholder="Age"
           value={formData.age}
+          keyboardType="numeric"
           onChangeText={(val) => handleChange('age', val)}
         />
       </Card>
@@ -90,14 +162,36 @@ export const TransferForm = ({ onSubmit }) => {
           value={formData.primaryDiagnosis}
           onChangeText={(val) => handleChange('primaryDiagnosis', val)}
         />
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Active medications (include dose & route)"
-          multiline
-          numberOfLines={4}
-          value={formData.activeMedications}
-          onChangeText={(val) => handleChange('activeMedications', val)}
-        />
+        <H2 style={styles.subHeader}>Active Medications</H2>
+        {(formData.med || []).map((med, index) => (
+          <View key={index} style={styles.medRow}>
+            <TextInput
+              style={[styles.input, styles.medInput]}
+              placeholder="Drug"
+              value={med.n}
+              onChangeText={(val) => handleMedicationChange(index, 'n', val)}
+            />
+            <TextInput
+              style={[styles.input, styles.medInputSmall]}
+              placeholder="Dose"
+              value={med.d}
+              onChangeText={(val) => handleMedicationChange(index, 'd', val)}
+            />
+            <TextInput
+              style={[styles.input, styles.medInputSmall]}
+              placeholder="Route"
+              value={med.r}
+              onChangeText={(val) => handleMedicationChange(index, 'r', val)}
+            />
+            <TouchableOpacity onPress={() => removeMedication(index)} style={styles.removeMedBtn}>
+              <Text style={styles.removeMedText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        <TouchableOpacity style={styles.addMedBtn} onPress={addMedication}>
+          <Text style={styles.addMedText}>+ Add Medication</Text>
+        </TouchableOpacity>
+
         <TextInput
           style={[styles.input, styles.textArea]}
           placeholder="Known allergies"
@@ -114,14 +208,22 @@ export const TransferForm = ({ onSubmit }) => {
           value={formData.transferReason}
           onChangeText={(val) => handleChange('transferReason', val)}
         />
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Last set of vitals (e.g., HR, BP, RR, Temp, SpO2)"
-          multiline
-          numberOfLines={3}
-          value={formData.lastVitals}
-          onChangeText={(val) => handleChange('lastVitals', val)}
-        />
+        <H2 style={styles.subHeader}>Vitals</H2>
+        <View style={styles.vitalsRow}>
+          <TextInput
+            style={[styles.input, styles.vitalInput]}
+            placeholder="HR (bpm)"
+            keyboardType="numeric"
+            value={String(formData.vit?.hr ?? '')}
+            onChangeText={(val) => handleVitalsChange('hr', val)}
+          />
+          <TextInput
+            style={[styles.input, styles.vitalInput]}
+            placeholder="BP (e.g., 120/80)"
+            value={String(formData.vit?.bp ?? '')}
+            onChangeText={(val) => handleVitalsChange('bp', val)}
+          />
+        </View>
         <TextInput
           style={[styles.input, styles.textArea]}
           placeholder="Pending investigations"
@@ -150,7 +252,7 @@ export const TransferForm = ({ onSubmit }) => {
         <Body1 style={styles.helperText}>{wordCount}/200 words</Body1>
       </Card>
 
-      <Button title="Generate Transfer Record" onPress={() => onSubmit(formData)} style={styles.submitBtn} />
+      <Button title="Generate Transfer Record" onPress={() => onSubmit(buildSubmitPayload())} style={styles.submitBtn} />
     </ScrollView>
   );
 };
@@ -163,6 +265,10 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 12,
+  },
+  subHeader: {
+    marginBottom: 10,
+    fontSize: 18,
   },
   input: {
     borderWidth: 1,
@@ -205,6 +311,53 @@ const styles = StyleSheet.create({
   },
   micActive: {
     color: Colors.primary,
+  },
+  medRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  medInput: {
+    flex: 2,
+  },
+  medInputSmall: {
+    flex: 1,
+  },
+  addMedBtn: {
+    marginTop: -4,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  addMedText: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  removeMedBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  removeMedText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+  },
+  vitalsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  vitalInput: {
+    flex: 1,
   },
   submitBtn: {
     marginTop: 16,

@@ -67,9 +67,14 @@ function parseVitals(value) {
   }
 
   if (typeof value === 'object' && !Array.isArray(value)) {
+    const hrRaw = value.hr;
+    const parsedHr = typeof hrRaw === 'number'
+      ? hrRaw
+      : (typeof hrRaw === 'string' && hrRaw.trim() ? Number.parseInt(hrRaw, 10) : undefined);
+
     return {
-      hr: typeof value.hr === 'number' ? value.hr : undefined,
-      bp: typeof value.bp === 'string' ? value.bp : undefined,
+      hr: Number.isNaN(parsedHr) ? undefined : parsedHr,
+      bp: value.bp !== undefined && value.bp !== null ? String(value.bp).trim() : undefined,
     };
   }
 

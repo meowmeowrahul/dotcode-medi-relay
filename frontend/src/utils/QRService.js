@@ -68,7 +68,19 @@ export const generatePayload = (formData) => {
   const allergy = formData.allergies || 'None';
   const summary = formData.clinicalSummary || 'No summary provided';
   const age = formData.age || 'No Age given';
-  const activeMedications = formData.activeMedications || 'No Data Provided';
+  const activeMedications = formData.activeMedications
+    || (Array.isArray(formData.med)
+      ? formData.med
+        .map((med) => {
+          const n = med?.n || '';
+          const d = med?.d || '';
+          const r = med?.r || '';
+          return [n, d, r].filter(Boolean).join(' | ');
+        })
+        .filter(Boolean)
+        .join('; ')
+      : '')
+    || 'No Data Provided';
 
   
   
@@ -108,7 +120,7 @@ export const parsePayload = (qrString) => {
   try {
     const minifiedObj = JSON.parse(decompressedString);
     return deminifyData(minifiedObj);
-  } catch (error) {
+  } catch (_error) {
     throw new Error("Failed to parse the decompressed JSON data.");
   }
 };

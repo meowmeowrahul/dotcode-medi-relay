@@ -14,14 +14,12 @@ export default function SenderTab() {
   const { user } = useAuth();
 
   const userRole = String(user?.role || '').toLowerCase();
-  const doctorId = user?.did || user?.id || user?.username || '';
 
   const handleSubmit = async (data) => {
     try {
       setSubmitting(true);
       const payload = {
         ...data,
-        did: data.did || data.doctorId || doctorId,
         submissionTimestamp: Date.now(),
       };
 
@@ -36,7 +34,6 @@ export default function SenderTab() {
         ...result.data,
         recordId: createdRecordId,
         patientName: data.patientName || result.data?.nam,
-        doctorId: data.doctorId || result.data?.did,
       });
       setShowForm(false);
       Alert.alert('Submitted', 'Transfer submitted to backend successfully.');

@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16, paddingHorizontal: 24, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center', minHeight: 52,
   },
-  submitButton: { backgroundColor: Colors.secondary },
+  submitButton: { backgroundColor: Colors.primary },
   submitButtonText: { color: Colors.surface, fontSize: 16, fontWeight: 'bold' },
   cancelButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.border },
   cancelButtonText: { color: Colors.textSecondary, fontSize: 15 },

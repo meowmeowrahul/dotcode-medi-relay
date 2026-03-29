@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -114,12 +114,16 @@ export default function ScanResultScreen() {
   const { user } = useAuth();
   const params = useLocalSearchParams();
 
-  let initialData = {};
-  try {
-    initialData = JSON.parse(params.data || '{}');
-  } catch {
-    initialData = {};
+  const initialDataRef = useRef(null);
+  if (!initialDataRef.current) {
+    try {
+      initialDataRef.current = JSON.parse(params.data || '{}');
+    } catch {
+      initialDataRef.current = {};
+    }
   }
+  const initialData = initialDataRef.current;
+  const loadCurrentInFlightRef = useRef(false);
 
   const [record, setRecord] = useState(initialData);
   const [isEditing, setIsEditing] = useState(false);
@@ -131,7 +135,7 @@ export default function ScanResultScreen() {
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
   const [activeVersionTimestamp, setActiveVersionTimestamp] = useState(initialData.submissionTimestamp || null);
-  const [isHistoricalView, setIsHistoricalView] = useState(false);
+  const [isHistoricalView, setIsHistoricalView] = useState(initialData.isCurrent === false);
   const isPatient = user?.role === 'patient';
 
   const transferId = record._id;
@@ -152,15 +156,22 @@ export default function ScanResultScreen() {
     let isMounted = true;
 
     const loadCurrent = async () => {
+      if (loadCurrentInFlightRef.current) return;
       if (!pid) return;
-      setRecordLoading(true);
 
-      const currentResult = await getCurrentTransferByPid(pid);
-      if (isMounted && currentResult.success && currentResult.data) {
-        setRecord(currentResult.data);
-        setEditDraft(currentResult.data);
-        setActiveVersionTimestamp(currentResult.data.submissionTimestamp || null);
-        setIsHistoricalView(false);
+      loadCurrentInFlightRef.current = true;
+      const hasSelectedRecord = !!initialData?._id;
+
+      // If opened from History, preserve selected snapshot/current row as-is.
+      if (!hasSelectedRecord) {
+        setRecordLoading(true);
+        const currentResult = await getCurrentTransferByPid(pid);
+        if (isMounted && currentResult.success && currentResult.data) {
+          setRecord(currentResult.data);
+          setEditDraft(currentResult.data);
+          setActiveVersionTimestamp(currentResult.data.submissionTimestamp || null);
+          setIsHistoricalView(false);
+        }
       }
 
       if (isMounted) {
@@ -170,12 +181,15 @@ export default function ScanResultScreen() {
       if (isMounted) {
         await refreshTimeline(pid);
       }
+
+      loadCurrentInFlightRef.current = false;
     };
 
     loadCurrent();
 
     return () => {
       isMounted = false;
+      loadCurrentInFlightRef.current = false;
     };
   }, [pid, refreshTimeline]);
 
@@ -338,6 +352,8 @@ export default function ScanResultScreen() {
     await refreshTimeline(pid);
     Alert.alert('Acknowledged', 'Transfer receipt has been acknowledged and recorded.');
   };
+
+  const isAlreadyAcknowledged = record?.acknowledgementStatus === 'ACKNOWLEDGED';
 
   // ── Formatters ──
   const formatAllergies = (alg) => {
@@ -635,10 +651,13 @@ export default function ScanResultScreen() {
           ) : !isHistoricalView && !isPatient ? (
             <>
               <TouchableOpacity
-                style={[styles.actionButton, styles.acknowledgeButton]}
+                style={[styles.actionButton, styles.acknowledgeButton, isAlreadyAcknowledged && styles.disabledButton]}
                 onPress={() => setShowAckModal(true)} activeOpacity={0.8}
+                disabled={isAlreadyAcknowledged}
               >
-                <Text style={styles.actionButtonText}>Send Acknowledgement</Text>
+                <Text style={styles.actionButtonText}>
+                  {isAlreadyAcknowledged ? 'Already Acknowledged' : 'Send Acknowledgement'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.editButton]}
@@ -849,9 +868,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16, paddingHorizontal: 24, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center', minHeight: 56,
   },
-  acknowledgeButton: { backgroundColor: Colors.secondary },
+  acknowledgeButton: { backgroundColor: Colors.primary },
   editButton: { backgroundColor: Colors.primary },
-  saveButton: { backgroundColor: Colors.secondary },
+  saveButton: { backgroundColor: Colors.primary },
   cancelEditButton: { backgroundColor: 'transparent', borderWidth: 2, borderColor: Colors.primary },
   actionButtonText: { color: Colors.surface, fontSize: 16, fontWeight: 'bold' },
+  disabledButton: { opacity: 0.55 },
 });

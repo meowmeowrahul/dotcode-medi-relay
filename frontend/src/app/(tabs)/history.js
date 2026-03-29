@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, ScrollView
 import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui/Card';
 import { Colors, Shadows } from '../../constants/Theme';
-import { listDoctorIssuedTransfers, listPatientPastTransfers } from '../../../ScanImplementation/utils/api';
+import { listMyDoctorIssuedTransfers, listMyRecipientScannedTransfers } from '../../../ScanImplementation/utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Pill, Clock } from 'lucide-react-native';
 
@@ -21,12 +21,9 @@ export default function HistoryTab() {
     }
 
     const role = user?.role || 'doctor';
-    const did = user?.did || 'DOC-DEMO-001';
-    const pid = user?.pid || 'PID-DEMO-001';
-
     const result = role === 'patient'
-      ? await listPatientPastTransfers(pid, { limit: 300, skip: 0 })
-      : await listDoctorIssuedTransfers(did, { limit: 300, skip: 0 });
+      ? await listMyRecipientScannedTransfers({ limit: 300, skip: 0 })
+      : await listMyDoctorIssuedTransfers({ limit: 300, skip: 0 });
 
     if (!silent) {
       setLoading(false);
@@ -64,13 +61,6 @@ export default function HistoryTab() {
     loadTimeline();
   }, [loadTimeline]);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      loadTimeline({ silent: true });
-    }, 2000);
-    return () => clearInterval(intervalId);
-  }, [loadTimeline]);
-
   const formatVersionDate = (timestamp) => {
     if (!timestamp) return 'Unknown';
     return new Date(timestamp).toLocaleDateString();
@@ -89,10 +79,17 @@ export default function HistoryTab() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <View style={styles.headerRow}>
+        <Text style={styles.sectionTitle}>History</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={() => loadTimeline()} activeOpacity={0.8}>
+          <Text style={styles.refreshText}>Refresh</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.metaText}>Loading patient timelines...</Text>
+          <Text style={styles.metaText}>Loading history from database...</Text>
         </View>
       ) : error ? (
         <Card>
@@ -163,6 +160,28 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  refreshButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  refreshText: {
+    color: Colors.surface,
+    fontWeight: '700',
+    fontSize: 13,
   },
   loadingWrap: {
     paddingTop: 40,

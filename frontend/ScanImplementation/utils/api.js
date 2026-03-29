@@ -261,6 +261,26 @@ export async function listDoctorIssuedTransfers(did, { limit = 200, skip = 0 } =
   }
 }
 
+export async function listMyDoctorIssuedTransfers({ limit = 300, skip = 0 } = {}) {
+  try {
+    const query = new URLSearchParams();
+    query.append('limit', String(limit));
+    query.append('skip', String(skip));
+
+    const response = await fetch(`${API_BASE}/transfers/history/doctor-issued?${query.toString()}`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data || [], pagination: result.pagination };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function listPatientPastTransfers(pid, { limit = 200, skip = 0 } = {}) {
   try {
     const query = new URLSearchParams();
@@ -276,6 +296,49 @@ export async function listPatientPastTransfers(pid, { limit = 200, skip = 0 } = 
       throw new Error(result.error || `Server responded with status ${response.status}`);
     }
     return { success: true, data: result.data || [], pagination: result.pagination };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function listMyRecipientScannedTransfers({ limit = 300, skip = 0 } = {}) {
+  try {
+    const query = new URLSearchParams();
+    query.append('limit', String(limit));
+    query.append('skip', String(skip));
+
+    const response = await fetch(`${API_BASE}/transfers/history/recipient-scanned?${query.toString()}`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data || [], pagination: result.pagination };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function recordTransferScanEvent(id) {
+  try {
+    if (!id) {
+      throw new Error('transfer id is required');
+    }
+
+    const response = await fetch(`${API_BASE}/transfers/${encodeURIComponent(id)}/scan-event`, {
+      method: 'POST',
+      headers: await buildHeaders(),
+      body: JSON.stringify({ scannedAt: Date.now() }),
+    });
+
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+
+    return { success: true, data: result.data };
   } catch (error) {
     return { success: false, error: error.message };
   }

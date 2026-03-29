@@ -31,6 +31,10 @@ const transferSchema = new mongoose.Schema({
   pid: { type: String, required: true },         // Legacy alias of pinAuth for existing queries
   pinAuth: { type: String, required: true, unique: true }, // 6-digit PIN auth key
   did: { type: String, required: true },         // Doctor/issuer ID
+  issuerUserId: { type: String, default: '' },   // Auth user id of issuer doctor
+  issuerUsername: { type: String, default: '' }, // Auth username of issuer doctor
+  recipientUserIds: { type: [String], default: [] },
+  recipientUsernames: { type: [String], default: [] },
   fh: { type: String, default: '' },             // From Hospital
   th: { type: String, default: '' },             // To Hospital
   bg: { type: String, default: '' },             // Blood Group
@@ -78,6 +82,8 @@ const transferSchema = new mongoose.Schema({
 // Index for quick lookup by patient ID
 transferSchema.index({ pid: 1 });
 transferSchema.index({ did: 1 });
+transferSchema.index({ issuerUserId: 1 });
+transferSchema.index({ recipientUserIds: 1 });
 transferSchema.index({ status: 1 });
 transferSchema.index({ pid: 1, submissionTimestamp: 1 }, { unique: true });
 transferSchema.index({ pid: 1, isCurrent: 1 });

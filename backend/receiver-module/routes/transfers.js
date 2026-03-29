@@ -88,6 +88,74 @@ router.get('/patient/:pid/past', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/transfers/history/doctor-issued — issued by logged-in doctor
+// ─────────────────────────────────────────────────────────────
+router.get('/history/doctor-issued', async (req, res) => {
+  try {
+    const { limit = 300, skip = 0 } = req.query;
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'doctor') {
+      return res.status(403).json({ success: false, error: 'Only doctors can view issued history.' });
+    }
+
+    const userId = String(req.user?.id || '').trim();
+    const username = String(req.user?.username || '').trim();
+    const did = String(req.user?.did || '').trim();
+
+    const query = {
+      $or: [
+        ...(userId ? [{ issuerUserId: userId }] : []),
+        ...(username ? [{ issuerUsername: username }, { did: username }] : []),
+        ...(did ? [{ did }] : []),
+      ],
+    };
+
+    const transfers = await Transfer.find(query)
+      .sort({ submissionTimestamp: -1 })
+      .limit(parseInt(limit, 10))
+      .skip(parseInt(skip, 10));
+
+    const total = await Transfer.countDocuments(query);
+    return res.json({
+      success: true,
+      data: transfers,
+      pagination: { total, limit: parseInt(limit, 10), skip: parseInt(skip, 10) },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/transfers/history/recipient-scanned — scanned by logged-in recipient
+// ─────────────────────────────────────────────────────────────
+router.get('/history/recipient-scanned', async (req, res) => {
+  try {
+    const { limit = 300, skip = 0 } = req.query;
+    const userId = String(req.user?.id || '').trim();
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Authenticated user id missing.' });
+    }
+
+    const query = { recipientUserIds: userId };
+    const transfers = await Transfer.find(query)
+      .sort({ submissionTimestamp: -1 })
+      .limit(parseInt(limit, 10))
+      .skip(parseInt(skip, 10));
+
+    const total = await Transfer.countDocuments(query);
+    return res.json({
+      success: true,
+      data: transfers,
+      pagination: { total, limit: parseInt(limit, 10), skip: parseInt(skip, 10) },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/transfers/pid/:pid/current — Fetch current version for PID
 // ─────────────────────────────────────────────────────────────
 router.get('/pid/:pid/current', async (req, res) => {
@@ -169,6 +237,47 @@ router.get('/:id/pin-auth', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// POST /api/transfers/:id/scan-event — persist who scanned the form
+// ─────────────────────────────────────────────────────────────
+router.post('/:id/scan-event', async (req, res) => {
+  try {
+    const transfer = await Transfer.findById(req.params.id);
+    if (!transfer) {
+      return res.status(404).json({ success: false, error: 'Transfer record not found' });
+    }
+
+    const userId = String(req.user?.id || '').trim();
+    const username = String(req.user?.username || '').trim();
+    const role = String(req.user?.role || '').toLowerCase();
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Authenticated user id missing.' });
+    }
+
+    if (!transfer.recipientUserIds.includes(userId)) {
+      transfer.recipientUserIds.push(userId);
+    }
+    if (username && !transfer.recipientUsernames.includes(username)) {
+      transfer.recipientUsernames.push(username);
+    }
+
+    transfer.history.push({
+      action: 'SCANNED',
+      timestamp: new Date(),
+      details: `Scanned by ${username || userId} (${role || 'unknown'})`,
+    });
+
+    await transfer.save();
+    return res.json({ success: true, data: { transferId: transfer._id } });
+  } catch (err) {
+    if (err.name === 'CastError') {
+      return res.status(400).json({ success: false, error: 'Invalid transfer ID format' });
+    }
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/transfers/:id — Fetch a single transfer record
 // ─────────────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
@@ -228,6 +337,10 @@ router.post('/', validateCreateTransfer, async (req, res) => {
 
     const transfer = new Transfer({
       ...normalizedPayload,
+      issuerUserId: String(req.user?.id || ''),
+      issuerUsername: String(req.user?.username || ''),
+      recipientUserIds: [],
+      recipientUsernames: [],
       status: 'IN_TRANSIT',
       acknowledgementStatus: 'UNACKNOWLEDGED',
       isCurrent: true,
@@ -276,6 +389,10 @@ router.post('/:id/updates', validateUpdate, validateUpdateTimestamp, async (req,
       pid: currentTransfer.pid,
       pinAuth: currentTransfer.pinAuth,
       did: currentTransfer.did || 'DOC-UNKNOWN',
+      issuerUserId: currentTransfer.issuerUserId || '',
+      issuerUsername: currentTransfer.issuerUsername || '',
+      recipientUserIds: currentTransfer.recipientUserIds || [],
+      recipientUsernames: currentTransfer.recipientUsernames || [],
       fh: currentTransfer.fh,
       th: currentTransfer.th,
       bg: currentTransfer.bg,

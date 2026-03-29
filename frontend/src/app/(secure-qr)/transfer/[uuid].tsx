@@ -82,8 +82,20 @@ export default function SecureQrTransferRoute() {
         }
 
         if (active) {
-          setRecord(payload?.data?.record || null);
+          const resolvedRecord = payload?.data?.record || null;
+          setRecord(resolvedRecord);
           setError(null);
+
+          if (resolvedRecord?._id) {
+            fetch(`${API_BASE}/transfers/${encodeURIComponent(String(resolvedRecord._id))}/scan-event`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ scannedAt: Date.now() }),
+            }).catch(() => {});
+          }
         }
       } catch (err) {
         if (active) {

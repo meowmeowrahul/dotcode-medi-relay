@@ -16,7 +16,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { API_BASE } from '../../src/utils/authApi';
 import { decryptPinEncryptedPayload, parsePinEncryptedQrPayload } from '../../src/utils/pinCrypto';
 import PinEntryModal from '../components/PinEntryModal';
-import { getTransferPinAuth } from '../utils/api';
+import { getTransferPinAuth, recordTransferScanEvent } from '../utils/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIEWFINDER_SIZE = SCREEN_WIDTH * 0.7;
@@ -249,6 +249,10 @@ export default function ScannerScreen() {
       throw new Error('Access denied. This PIN is not linked to your patient record.');
     }
 
+    if (normalized?._id) {
+      recordTransferScanEvent(normalized._id).catch(() => {});
+    }
+
     router.replace({
       pathname: '/(tabs)/scan-result',
       params: { data: JSON.stringify(normalized) },
@@ -352,6 +356,9 @@ export default function ScannerScreen() {
       }
 
       const parsed = decodeLegacyPayload(data);
+      if (parsed?._id) {
+        recordTransferScanEvent(parsed._id).catch(() => {});
+      }
       router.replace({
         pathname: '/(tabs)/scan-result',
         params: { data: JSON.stringify(parsed) },

@@ -21,16 +21,8 @@ function validateCreateTransfer(req, res, next) {
     });
   }
 
-  const patientId = body.pid || body.patientId;
   const doctorId = body.did || body.doctorId;
   const patientName = body.nam || body.patientName;
-
-  if (!isNonEmptyString(patientId)) {
-    return res.status(400).json({
-      success: false,
-      error: 'patientId (or pid) is required',
-    });
-  }
 
   if (!isNonEmptyString(patientName)) {
     return res.status(400).json({

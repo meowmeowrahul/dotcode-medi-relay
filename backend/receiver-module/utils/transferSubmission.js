@@ -102,7 +102,6 @@ function normalizeTransferSubmission(body) {
   const submissionTimestamp = getSubmissionTimestamp(body.submissionTimestamp || body.timestamp);
 
   const normalized = {
-    pid: body.pid || body.patientId,
     did: body.did || body.doctorId,
     fh: body.fh || body.fromHospital,
     th: body.th || body.toHospital,

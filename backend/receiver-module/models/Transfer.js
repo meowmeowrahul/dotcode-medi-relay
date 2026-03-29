@@ -28,7 +28,8 @@ const historyEntrySchema = new mongoose.Schema({
 
 const transferSchema = new mongoose.Schema({
   // Core patient identifiers
-  pid: { type: String, required: true },         // Patient ID
+  pid: { type: String, required: true },         // Legacy alias of pinAuth for existing queries
+  pinAuth: { type: String, required: true, unique: true }, // 6-digit PIN auth key
   did: { type: String, required: true },         // Doctor/issuer ID
   fh: { type: String, default: '' },             // From Hospital
   th: { type: String, default: '' },             // To Hospital

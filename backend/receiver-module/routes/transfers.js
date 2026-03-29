@@ -4,6 +4,16 @@ const Transfer = require('../models/Transfer');
 const { normalizeTransferSubmission } = require('../utils/transferSubmission');
 const { validateCreateTransfer, validateAcknowledge, validateUpdate, validateUpdateTimestamp } = require('../middleware/validation');
 
+async function generateUniquePinAuth() {
+  for (let i = 0; i < 10; i += 1) {
+    const pin = String(Math.floor(100000 + Math.random() * 900000));
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await Transfer.exists({ pinAuth: pin });
+    if (!exists) return pin;
+  }
+  throw new Error('Failed to generate a unique 6-digit PIN');
+}
+
 function collectAllowedUpdates(body) {
   const allowedFields = ['pid', 'did', 'fh', 'th', 'bg', 'nam', 'age', 'pd', 'rt', 'alg', 'med', 'vit', 'pi', 'sum'];
   const updates = {};
@@ -132,6 +142,33 @@ router.get('/pid/:pid/version/:timestamp', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/transfers/:id/pin-auth — Doctor-only PIN retrieval
+// ─────────────────────────────────────────────────────────────
+router.get('/:id/pin-auth', async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'doctor') {
+      return res.status(403).json({ success: false, error: 'Only doctors can retrieve transfer PIN.' });
+    }
+
+    const transfer = await Transfer.findById(req.params.id).select('_id pinAuth');
+    if (!transfer) {
+      return res.status(404).json({ success: false, error: 'Transfer record not found' });
+    }
+
+    return res.json({
+      success: true,
+      data: { id: transfer._id, pinAuth: transfer.pinAuth },
+    });
+  } catch (err) {
+    if (err.name === 'CastError') {
+      return res.status(400).json({ success: false, error: 'Invalid transfer ID format' });
+    }
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/transfers/:id — Fetch a single transfer record
 // ─────────────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
@@ -181,6 +218,10 @@ router.get('/', async (req, res) => {
 router.post('/', validateCreateTransfer, async (req, res) => {
   try {
     const normalizedPayload = normalizeTransferSubmission(req.body);
+    const pinAuth = await generateUniquePinAuth();
+
+    normalizedPayload.pinAuth = pinAuth;
+    normalizedPayload.pid = pinAuth;
 
     // Keep only one editable current version per PID.
     await Transfer.updateMany({ pid: normalizedPayload.pid, isCurrent: true }, { $set: { isCurrent: false } });
@@ -233,6 +274,7 @@ router.post('/:id/updates', validateUpdate, validateUpdateTimestamp, async (req,
     const updateTimestamp = req.body.timestamp || Date.now();
     const nextVersion = new Transfer({
       pid: currentTransfer.pid,
+      pinAuth: currentTransfer.pinAuth,
       did: currentTransfer.did || 'DOC-UNKNOWN',
       fh: currentTransfer.fh,
       th: currentTransfer.th,

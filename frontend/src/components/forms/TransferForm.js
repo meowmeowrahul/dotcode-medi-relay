@@ -23,7 +23,6 @@ export const TransferForm = ({ onSubmit }) => {
     bloodGroup: '',
     patientName: '',
     age: '',
-    patientId: '',
     primaryDiagnosis: '',
     med: [{ n: '', d: '', r: '' }],
     allergies: '',
@@ -168,11 +167,6 @@ export const TransferForm = ({ onSubmit }) => {
           placeholder="Full name"
           value={formData.patientName}
           onChangeText={(val) => handleChange('patientName', val)}
-        />
-        <Input
-          placeholder="MRN / Patient ID"
-          value={formData.patientId}
-          onChangeText={(val) => handleChange('patientId', val)}
         />
         <Input
           placeholder="Age"

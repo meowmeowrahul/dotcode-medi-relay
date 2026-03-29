@@ -156,6 +156,22 @@ export async function getTransfer(id) {
   }
 }
 
+export async function getTransferPinAuth(id) {
+  try {
+    const response = await fetch(`${API_BASE}/transfers/${encodeURIComponent(id)}/pin-auth`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    const result = await parseResponse(response);
+    if (!response.ok) {
+      throw new Error(result.error || `Server responded with status ${response.status}`);
+    }
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getCurrentTransferByPid(pid) {
   try {
     const response = await fetch(`${API_BASE}/transfers/pid/${encodeURIComponent(pid)}/current`, {

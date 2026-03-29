@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { generateSecureQrToken } from '../../ScanImplementation/utils/api';
+import { buildPinEncryptedQrPayload } from '../utils/pinCrypto';
 
 export default function GenerateQR({ formData }) {
-  // Medical-Grade UI styling: Cobalt Blue primary color (#0047AB)
   const primaryColor = '#0047AB';
-  const [loadingToken, setLoadingToken] = useState(true);
-  const [secureUrl, setSecureUrl] = useState('');
+  const [loadingPayload, setLoadingPayload] = useState(true);
+  const [qrPayload, setQrPayload] = useState('');
   const [tokenError, setTokenError] = useState('');
 
   // Make sure we have formData, else show a placeholder.
@@ -22,35 +21,69 @@ export default function GenerateQR({ formData }) {
   useEffect(() => {
     let active = true;
 
-    async function createToken() {
+    async function createEncryptedPayload() {
       const recordId = formData?.recordId;
+      const pinAuth = String(formData?.pinAuth || '').trim();
+
       if (!recordId) {
         if (active) {
           setTokenError('Missing recordId. Submit transfer first to generate a secure QR.');
-          setLoadingToken(false);
+          setLoadingPayload(false);
         }
         return;
       }
 
-      setLoadingToken(true);
-      setTokenError('');
-
-      const result = await generateSecureQrToken(recordId);
-
-      if (!active) return;
-
-      if (!result.success || !result.data?.deepLink) {
-        setTokenError(result.error || 'Unable to generate secure QR token.');
-        setSecureUrl('');
-        setLoadingToken(false);
+      if (!/^\d{6}$/.test(pinAuth)) {
+        if (active) {
+          setTokenError('Missing 6-digit PIN. Regenerate transfer and try again.');
+          setLoadingPayload(false);
+        }
         return;
       }
 
-      setSecureUrl(result.data.deepLink);
-      setLoadingToken(false);
+      setLoadingPayload(true);
+      setTokenError('');
+
+      try {
+        const encryptedPayload = buildPinEncryptedQrPayload({
+          recordId,
+          pin: pinAuth,
+          payload: {
+            _id: recordId,
+            pid: formData.pid || pinAuth,
+            pinAuth,
+            did: formData.did || formData.doctorId,
+            fh: formData.fh || formData.fromHospital,
+            th: formData.th || formData.toHospital,
+            bg: formData.bg || formData.bloodGroup,
+            nam: formData.nam || formData.patientName,
+            age: formData.age,
+            pd: formData.pd || formData.primaryDiagnosis,
+            rt: formData.rt || formData.transferReason,
+            alg: formData.alg || formData.allergies,
+            med: formData.med,
+            vit: formData.vit,
+            pi: formData.pi || formData.pendingInvestigations,
+            sum: formData.sum || formData.clinicalSummary,
+            submissionTimestamp: formData.submissionTimestamp,
+            status: formData.status || 'IN_TRANSIT',
+          },
+        });
+
+        if (active) {
+          setQrPayload(encryptedPayload);
+          setLoadingPayload(false);
+        }
+      } catch (error) {
+        if (active) {
+          setTokenError(error.message || 'Unable to generate encrypted QR payload.');
+          setQrPayload('');
+          setLoadingPayload(false);
+        }
+      }
     }
 
-    createToken();
+    createEncryptedPayload();
 
     return () => {
       active = false;
@@ -63,10 +96,10 @@ export default function GenerateQR({ formData }) {
         <Text style={[styles.headerText, { color: primaryColor }]}>Handover QR Code</Text>
         <Text style={styles.subText}>Scan this code with the MediRelay app or a standard camera.</Text>
         
-        {loadingToken ? (
+        {loadingPayload ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={primaryColor} />
-            <Text style={styles.loadingText}>Generating secure tokenized QR...</Text>
+            <Text style={styles.loadingText}>Generating encrypted PIN-auth QR...</Text>
           </View>
         ) : tokenError ? (
           <View style={styles.loadingContainer}>
@@ -75,7 +108,7 @@ export default function GenerateQR({ formData }) {
         ) : (
           <View style={styles.qrContainer}>
             <QRCode
-              value={secureUrl}
+              value={qrPayload}
               size={250}
               color="black"
               backgroundColor="white"
@@ -84,10 +117,16 @@ export default function GenerateQR({ formData }) {
           </View>
         )}
 
+        <View style={styles.pinCard}>
+          <Text style={styles.pinLabel}>Patient PIN</Text>
+          <Text style={styles.pinValue}>{formData.pinAuth || '------'}</Text>
+          <Text style={styles.pinHint}>Share this PIN securely with the patient.</Text>
+        </View>
+
         <View style={styles.infoContainer}>
           <Text style={styles.infoText}>Doctor ID: {formData.doctorId || formData.did || 'N/A'}</Text>
-          <Text style={styles.infoText}>Patient: {formData.patientName || 'N/A'}</Text>
-          <Text style={styles.infoText} numberOfLines={2}>Secure Link: {secureUrl || 'N/A'}</Text>
+          <Text style={styles.infoText}>Patient: {formData.patientName || formData.nam || 'N/A'}</Text>
+          <Text style={styles.infoText}>Record ID: {formData.recordId || 'N/A'}</Text>
           <Text style={styles.infoText}>Status: <Text style={styles.syncedText}>Ready for Transfer</Text></Text>
         </View>
       </View>
@@ -145,6 +184,36 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: '#666',
+  },
+  pinCard: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+    alignItems: 'center',
+  },
+  pinLabel: {
+    fontSize: 12,
+    letterSpacing: 0.8,
+    color: '#1E3A8A',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  pinValue: {
+    marginTop: 4,
+    fontSize: 38,
+    letterSpacing: 6,
+    color: '#0F172A',
+    fontWeight: '800',
+  },
+  pinHint: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#334155',
   },
   infoContainer: {
     alignItems: 'center',

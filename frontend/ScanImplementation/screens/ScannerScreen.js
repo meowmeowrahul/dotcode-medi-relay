@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import LZString from 'lz-string';
 import { Colors } from '../../src/constants/Theme';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { API_BASE } from '../../src/utils/authApi';
+import { decryptPinEncryptedPayload, parsePinEncryptedQrPayload } from '../../src/utils/pinCrypto';
+import PinEntryModal from '../components/PinEntryModal';
+import { getTransferPinAuth } from '../utils/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const VIEWFINDER_SIZE = SCREEN_WIDTH * 0.7;
@@ -162,18 +167,181 @@ function decodeLegacyPayload(rawString) {
 
 export default function ScannerScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pendingEncrypted, setPendingEncrypted] = useState(null);
 
-  const handleBarCodeScanned = ({ data }) => {
+  const userRole = useMemo(() => String(user?.role || '').toLowerCase(), [user?.role]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setScanned(false);
+      setProcessing(false);
+      setError(null);
+      setPinModalVisible(false);
+      setPinInput('');
+      setPinError('');
+      setPinLoading(false);
+      setPendingEncrypted(null);
+
+      return undefined;
+    }, [])
+  );
+
+  const canReachBackend = async () => {
+    try {
+      const healthUrl = `${API_BASE.replace(/\/api$/, '')}/health`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      const response = await fetch(healthUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+      return response.ok;
+    } catch (_error) {
+      return false;
+    }
+  };
+
+  const normalizeDecryptedRecord = (record) => {
+    if (!record || typeof record !== 'object') {
+      throw new Error('Invalid decrypted transfer data');
+    }
+
+    return {
+      ...record,
+      pid: record.pid || record.pinAuth,
+      nam: record.nam || record.patientName,
+      pd: record.pd || record.primaryDiagnosis,
+      rt: record.rt || record.transferReason,
+      did: record.did || record.doctorId,
+      fh: record.fh || record.fromHospital,
+      th: record.th || record.toHospital,
+      bg: record.bg || record.bloodGroup,
+      sum: record.sum || record.clinicalSummary,
+      _id: record._id || record.recordId,
+    };
+  };
+
+  const isPatientOwner = (record) => {
+    if (userRole !== 'patient') return true;
+
+    // In current rollout, some patient sessions do not yet carry a PIN-linked identity claim.
+    // If no 6-digit identity is present in auth state, rely on PIN correctness only.
+    const expectedRaw = String(user?.pid || user?.patientId || '').trim();
+    if (!/^\d{6}$/.test(expectedRaw)) {
+      return true;
+    }
+
+    const expected = expectedRaw.toLowerCase();
+    const actual = String(record?.pid || record?.pinAuth || '').toLowerCase();
+    return !!actual && expected === actual;
+  };
+
+  const continueWithDecryptedRecord = (decrypted) => {
+    const normalized = normalizeDecryptedRecord(decrypted);
+    if (!isPatientOwner(normalized)) {
+      throw new Error('Access denied. This PIN is not linked to your patient record.');
+    }
+
+    router.replace({
+      pathname: '/(tabs)/scan-result',
+      params: { data: JSON.stringify(normalized) },
+    });
+  };
+
+  const openPinModal = (parsedEncrypted) => {
+    setPendingEncrypted(parsedEncrypted);
+    setPinInput('');
+    setPinError('');
+    setPinLoading(false);
+    setPinModalVisible(true);
+    setProcessing(false);
+  };
+
+  const closePinModal = () => {
+    setPinModalVisible(false);
+    setPendingEncrypted(null);
+    setPinInput('');
+    setPinError('');
+    setPinLoading(false);
+    setScanned(false);
+  };
+
+  const handleSubmitPin = async () => {
+    if (!pendingEncrypted) return;
+    if (!/^\d{6}$/.test(pinInput)) {
+      setPinError('Enter a valid 6-digit PIN.');
+      return;
+    }
+
+    setPinLoading(true);
+    setPinError('');
+
+    try {
+      const decrypted = decryptPinEncryptedPayload(pendingEncrypted.cipherText, pinInput);
+      continueWithDecryptedRecord(decrypted);
+      setPinModalVisible(false);
+      setPendingEncrypted(null);
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (/access denied/i.test(message)) {
+        setPinError(message);
+      } else {
+        setPinError('Invalid PIN. Please try again.');
+      }
+      setPinLoading(false);
+    }
+  };
+
+  const handleBarCodeScanned = async ({ data }) => {
     if (scanned || processing) return;
     setScanned(true);
     setProcessing(true);
     setError(null);
 
     try {
+      const encryptedPayload = parsePinEncryptedQrPayload(data);
+      if (encryptedPayload) {
+        if (userRole === 'patient') {
+          openPinModal(encryptedPayload);
+          return;
+        }
+
+        if (userRole === 'doctor') {
+          const online = await canReachBackend();
+          if (online && encryptedPayload.recordId) {
+            const pinResult = await getTransferPinAuth(encryptedPayload.recordId);
+            if (pinResult.success && /^\d{6}$/.test(String(pinResult.data?.pinAuth || ''))) {
+              try {
+                const decrypted = decryptPinEncryptedPayload(
+                  encryptedPayload.cipherText,
+                  String(pinResult.data.pinAuth)
+                );
+                continueWithDecryptedRecord(decrypted);
+                return;
+              } catch (_decryptErr) {
+                openPinModal(encryptedPayload);
+                return;
+              }
+            }
+          }
+
+          openPinModal(encryptedPayload);
+          return;
+        }
+
+        setError('Unsupported role for PIN-auth scan flow.');
+        setProcessing(false);
+        setTimeout(() => setScanned(false), 2000);
+        return;
+      }
+
       const secureUuid = extractSecureTransferUuid(data);
       if (secureUuid) {
         router.replace({
@@ -278,6 +446,18 @@ export default function ScannerScreen() {
       <TouchableOpacity style={styles.closeButton} onPress={handleClose} activeOpacity={0.7}>
         <Text style={styles.closeButtonText}>✕</Text>
       </TouchableOpacity>
+
+      <PinEntryModal
+        visible={pinModalVisible}
+        title="Enter 6-Digit PIN to Decrypt Record"
+        subtitle="For security, this transfer requires PIN authentication."
+        pin={pinInput}
+        onChangePin={setPinInput}
+        onSubmit={handleSubmitPin}
+        onCancel={closePinModal}
+        loading={pinLoading}
+        error={pinError}
+      />
     </View>
   );
 }

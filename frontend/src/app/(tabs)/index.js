@@ -31,7 +31,13 @@ export default function SenderTab() {
       }
 
       const createdRecordId = result.data?._id || result.data?.id || result.data?.recordId;
-      setFormData({ ...data, recordId: createdRecordId });
+      setFormData({
+        ...data,
+        ...result.data,
+        recordId: createdRecordId,
+        patientName: data.patientName || result.data?.nam,
+        doctorId: data.doctorId || result.data?.did,
+      });
       setShowForm(false);
       Alert.alert('Submitted', 'Transfer submitted to backend successfully.');
     } catch (error) {

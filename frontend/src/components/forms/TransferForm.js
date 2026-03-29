@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
-  TextInput,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { H2, Body1 } from '../ui/Typography';
 import { Colors } from '../../constants/Theme';
+import { Input } from '../ui/Input';
 
 const SUMMARY_MAX_CHARACTERS = 200;
 
@@ -32,7 +32,7 @@ export const TransferForm = ({ onSubmit }) => {
     pendingInvestigations: '',
     clinicalSummary: '',
   });
-  const voiceDictationEnabled = false; // temporarily disabled
+  const voiceDictationEnabled = false; 
   const isListening = false;
 
   const handleChange = (field, value) => {
@@ -133,7 +133,6 @@ export const TransferForm = ({ onSubmit }) => {
       );
       return;
     }
-
     onSubmit(buildSubmitPayload());
   };
 
@@ -145,44 +144,37 @@ export const TransferForm = ({ onSubmit }) => {
     <ScrollView style={styles.container}>
       <Card>
         <H2 style={styles.header}>Patient Identifiers</H2>
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="Doctor ID"
           value={formData.doctorId}
           onChangeText={(val) => handleChange('doctorId', val)}
         />
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="From Hospital"
           value={formData.fromHospital}
           onChangeText={(val) => handleChange('fromHospital', val)}
         />
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="To Hospital"
           value={formData.toHospital}
           onChangeText={(val) => handleChange('toHospital', val)}
         />
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="Blood Group (e.g. O+, AB-)"
           value={formData.bloodGroup}
           onChangeText={(val) => handleChange('bloodGroup', val)}
         />
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="Full name"
           value={formData.patientName}
           onChangeText={(val) => handleChange('patientName', val)}
         />
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="MRN / Patient ID"
           value={formData.patientId}
           onChangeText={(val) => handleChange('patientId', val)}
         />
-        <TextInput
-          style={styles.input}
+        <Input
           placeholder="Age"
           value={formData.age}
           keyboardType="numeric"
@@ -192,8 +184,7 @@ export const TransferForm = ({ onSubmit }) => {
 
       <Card>
         <H2 style={styles.header}>Clinical Information</H2>
-        <TextInput
-          style={[styles.input, styles.textArea]}
+        <Input
           placeholder="Primary diagnosis"
           multiline
           numberOfLines={3}
@@ -203,20 +194,20 @@ export const TransferForm = ({ onSubmit }) => {
         <H2 style={styles.subHeader}>Active Medications</H2>
         {(formData.med || []).map((med, index) => (
           <View key={index} style={styles.medRow}>
-            <TextInput
-              style={[styles.input, styles.medInput]}
+            <Input
+              style={styles.medInput}
               placeholder="Drug"
               value={med.n}
               onChangeText={(val) => handleMedicationChange(index, 'n', val)}
             />
-            <TextInput
-              style={[styles.input, styles.medInputSmall]}
+            <Input
+              style={styles.medInputSmall}
               placeholder="Dose"
               value={med.d}
               onChangeText={(val) => handleMedicationChange(index, 'd', val)}
             />
-            <TextInput
-              style={[styles.input, styles.medInputSmall]}
+            <Input
+              style={styles.medInputSmall}
               placeholder="Route"
               value={med.r}
               onChangeText={(val) => handleMedicationChange(index, 'r', val)}
@@ -230,16 +221,14 @@ export const TransferForm = ({ onSubmit }) => {
           <Text style={styles.addMedText}>+ Add Medication</Text>
         </TouchableOpacity>
 
-        <TextInput
-          style={[styles.input, styles.textArea]}
+        <Input
           placeholder="Known allergies"
           multiline
           numberOfLines={2}
           value={formData.allergies}
           onChangeText={(val) => handleChange('allergies', val)}
         />
-        <TextInput
-          style={[styles.input, styles.textArea]}
+        <Input
           placeholder="Reason for transfer"
           multiline
           numberOfLines={3}
@@ -248,22 +237,21 @@ export const TransferForm = ({ onSubmit }) => {
         />
         <H2 style={styles.subHeader}>Vitals</H2>
         <View style={styles.vitalsRow}>
-          <TextInput
-            style={[styles.input, styles.vitalInput]}
+          <Input
+            style={styles.vitalInput}
             placeholder="HR (bpm)"
             keyboardType="numeric"
             value={String(formData.vit?.hr ?? '')}
             onChangeText={(val) => handleVitalsChange('hr', val)}
           />
-          <TextInput
-            style={[styles.input, styles.vitalInput]}
+          <Input
+            style={styles.vitalInput}
             placeholder="BP (e.g., 120/80)"
             value={String(formData.vit?.bp ?? '')}
             onChangeText={(val) => handleVitalsChange('bp', val)}
           />
         </View>
-        <TextInput
-          style={[styles.input, styles.textArea]}
+        <Input
           placeholder="Pending investigations"
           multiline
           numberOfLines={3}
@@ -279,8 +267,8 @@ export const TransferForm = ({ onSubmit }) => {
             <Text style={[styles.micIcon, isListening && styles.micActive]}>{isListening ? '●' : '🎤'}</Text>
           </TouchableOpacity>
         </View>
-        <TextInput
-          style={[styles.input, styles.textArea, styles.summaryInput]}
+        <Input
+          style={styles.summaryInput}
           placeholder="Concise clinical narrative"
           multiline
           numberOfLines={6}
@@ -304,24 +292,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    marginBottom: 12,
+    marginBottom: 16, // spaced out
   },
   subHeader: {
-    marginBottom: 10,
+    marginBottom: 12,
     fontSize: 18,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-    color: Colors.textPrimary,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
   },
   summaryInput: {
     minHeight: 140,
@@ -329,6 +304,7 @@ const styles = StyleSheet.create({
   helperText: {
     textAlign: 'right',
     color: Colors.textSecondary,
+    marginBottom: 12,
   },
   helperTextError: {
     color: '#B00020',
@@ -337,16 +313,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
   micButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.surface,
+    elevation: 1,
   },
   micIcon: {
     fontSize: 18,
@@ -357,7 +335,7 @@ const styles = StyleSheet.create({
   },
   medRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
   },
   medInput: {
@@ -368,42 +346,43 @@ const styles = StyleSheet.create({
   },
   addMedBtn: {
     marginTop: -4,
-    marginBottom: 14,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: Colors.border,
     borderStyle: 'dashed',
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
+    backgroundColor: Colors.secondary,
   },
   addMedText: {
     color: Colors.primary,
     fontWeight: '600',
   },
   removeMedBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    backgroundColor: Colors.surface,
   },
   removeMedText: {
-    fontSize: 14,
-    color: Colors.textPrimary,
+    fontSize: 16,
+    color: Colors.critical,
     fontWeight: '700',
   },
   vitalsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   vitalInput: {
     flex: 1,
   },
   submitBtn: {
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 40,
   }
 });

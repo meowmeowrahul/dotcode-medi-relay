@@ -6,6 +6,7 @@ import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
 import { Colors } from '../../constants/Theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { ClipboardList, Inbox, History as HistoryIcon, User, LogOut } from 'lucide-react-native';
 
 function DrawerLabel({ title, subtitle }) {
   return (
@@ -54,12 +55,14 @@ function ProfileSection({ onToggleMenu, menuOpen, user, onNavigateProfile, onLog
             style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
             onPress={onNavigateProfile}
           >
+            <User color={Colors.textPrimary} size={18} strokeWidth={2} style={styles.menuIcon} />
             <Text style={styles.menuItemText}>Profile</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
             onPress={onLogout}
           >
+            <LogOut color={Colors.critical} size={18} strokeWidth={2} style={styles.menuIcon} />
             <Text style={[styles.menuItemText, { color: Colors.critical }]}>Logout</Text>
           </Pressable>
         </View>
@@ -100,17 +103,20 @@ function CustomDrawerContent(props) {
       <View style={styles.drawerItems}>
         {user?.role !== 'patient' ? (
           <DrawerItem
+            icon={({ color, size }) => <ClipboardList color={color} size={size} strokeWidth={2} />}
             label={() => <DrawerLabel title="Issuer" subtitle="Create handoff" />}
             onPress={() => props.navigation.navigate('index')}
             style={styles.drawerItem}
           />
         ) : null}
         <DrawerItem
+          icon={({ color, size }) => <Inbox color={color} size={size} strokeWidth={2} />}
           label={() => <DrawerLabel title="Recipient" subtitle="Receive updates" />}
           onPress={() => props.navigation.navigate('receiver')}
           style={styles.drawerItem}
         />
         <DrawerItem
+          icon={({ color, size }) => <HistoryIcon color={color} size={size} strokeWidth={2} />}
           label={() => <DrawerLabel title="History" subtitle="Timeline & logs" />}
           onPress={() => props.navigation.navigate('history')}
           style={styles.drawerItem}
@@ -143,14 +149,14 @@ export default function DrawerLayout() {
     <Drawer
       screenOptions={{
         drawerType: 'slide',
-        overlayColor: 'rgba(0,0,0,0.08)',
+        overlayColor: 'rgba(45,124,255,0.08)', // Using the soft primary hue
         sceneContainerStyle: { backgroundColor: Colors.background },
-        headerStyle: { backgroundColor: Colors.surface },
+        headerStyle: { backgroundColor: Colors.surface, shadowColor: 'transparent', elevation: 0, borderBottomWidth: 1, borderBottomColor: Colors.border },
         headerTintColor: Colors.textPrimary,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '700', letterSpacing: -0.3 },
         drawerActiveTintColor: Colors.primary,
         drawerInactiveTintColor: Colors.textSecondary,
-        drawerActiveBackgroundColor: '#E9F2FF',
+        drawerActiveBackgroundColor: Colors.secondary,
         drawerItemStyle: { borderRadius: 12 },
       }}
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -211,29 +217,32 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   drawerHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    marginBottom: 8,
   },
   appTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.textPrimary,
-    letterSpacing: 0.2,
+    letterSpacing: -0.5,
   },
   appSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 4,
   },
   drawerItems: {
     paddingVertical: 8,
+    paddingHorizontal: 8, 
   },
   drawerItem: {
     borderRadius: 12,
     marginHorizontal: 8,
-    paddingVertical: 2,
+    marginBottom: 8, // wide spacing
+    paddingVertical: 4,
   },
   drawerLabel: {
     fontSize: 16,
@@ -247,7 +256,7 @@ const styles = StyleSheet.create({
   },
   profileContainer: {
     marginTop: 'auto',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     backgroundColor: Colors.surface,
@@ -255,13 +264,13 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16, // more generous spacing
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#D3E8FF',
+    width: 48, // larger avatar
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#D1E4FF', // softer blue background
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -271,7 +280,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   profileTextWrap: {
-    marginLeft: 12,
+    marginLeft: 14,
     flex: 1,
   },
   profileName: {
@@ -280,30 +289,39 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   profileMeta: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 2,
   },
   profileMenu: {
-    marginTop: 6,
+    marginTop: 8,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 12,
     backgroundColor: Colors.surface,
-    overflow: 'hidden',
+    paddingVertical: 4,
+    marginBottom: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+  },
+  menuIcon: {
+    marginRight: 10,
   },
   menuItemText: {
     fontSize: 15,
+    fontWeight: '500',
     color: Colors.textPrimary,
   },
   pressed: {
     opacity: 0.7,
-  },
-  micActive: {
-    color: Colors.primary,
   },
 });

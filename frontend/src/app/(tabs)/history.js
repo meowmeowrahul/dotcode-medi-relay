@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card } from '../../components/ui/Card';
-import { Colors } from '../../constants/Theme';
+import { Colors, Shadows } from '../../constants/Theme';
 import { listDoctorIssuedTransfers, listPatientPastTransfers } from '../../../ScanImplementation/utils/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { Pill, Clock } from 'lucide-react-native';
 
 export default function HistoryTab() {
   const router = useRouter();
@@ -67,13 +68,16 @@ export default function HistoryTab() {
     const intervalId = setInterval(() => {
       loadTimeline({ silent: true });
     }, 2000);
-
     return () => clearInterval(intervalId);
   }, [loadTimeline]);
 
   const formatVersionDate = (timestamp) => {
-    if (!timestamp) return 'Unknown timestamp';
-    return new Date(timestamp).toLocaleString();
+    if (!timestamp) return 'Unknown';
+    return new Date(timestamp).toLocaleDateString();
+  };
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '--:--';
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const openVersion = (entry) => {
@@ -88,7 +92,7 @@ export default function HistoryTab() {
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.metaText}>Loading role-based timeline...</Text>
+          <Text style={styles.metaText}>Loading patient timelines...</Text>
         </View>
       ) : error ? (
         <Card>
@@ -103,35 +107,48 @@ export default function HistoryTab() {
         </Card>
       ) : (
         groupedTimeline.map((group) => (
-          <Card key={group.pid} style={styles.groupCard}>
-            <Text style={styles.groupTitle}>PID: {group.pid}</Text>
+          <View key={group.pid} style={styles.groupWrap}>
+            <Text style={styles.groupTitle}>Patient ID: {group.pid}</Text>
             {group.entries.map((entry) => {
               const isCurrent = !!entry.isCurrent;
+              const isAck = entry.acknowledgementStatus === 'ACKNOWLEDGED';
               return (
                 <TouchableOpacity
                   key={entry._id}
                   onPress={() => openVersion(entry)}
-                  style={[styles.timelineItem, isCurrent && styles.timelineItemCurrent]}
+                  style={[styles.pillCard, isCurrent && styles.pillCardCurrent]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.timelineTitle}>
-                    {isCurrent ? 'Current Version' : 'Historical Snapshot'}
-                  </Text>
-                  <Text style={styles.timelineMeta}>{formatVersionDate(entry.submissionTimestamp)}</Text>
-                  <Text
-                    style={[
-                      styles.timelineAck,
-                      entry.acknowledgementStatus === 'ACKNOWLEDGED'
-                        ? styles.timelineAckYes
-                        : styles.timelineAckNo,
-                    ]}
-                  >
-                    {entry.acknowledgementStatus === 'ACKNOWLEDGED' ? 'Acknowledged' : 'Unacknowledged'}
-                  </Text>
+                  <View style={styles.pillIconWrap}>
+                    <Pill color={isCurrent ? '#FFF' : Colors.primary} size={24} />
+                  </View>
+                  
+                  <View style={styles.pillContent}>
+                    <Text style={[styles.timelineTitle, isCurrent && { color: '#FFF' }]}>
+                      {isCurrent ? 'Latest Handoff' : 'Historical Record'}
+                    </Text>
+                    <Text style={[styles.timelineMeta, isCurrent && { color: 'rgba(255,255,255,0.8)' }]}>
+                      {formatVersionDate(entry.submissionTimestamp)}
+                    </Text>
+                    
+                    <View style={styles.statusWrap}>
+                       {/* Progress Dot Indicator matching MedTech spec */}
+                       <View style={[styles.statusDot, { backgroundColor: isAck ? Colors.success : Colors.textSecondary }]} />
+                       <Text style={[styles.timelineAck, isAck ? styles.timelineAckYes : styles.timelineAckNo, isCurrent && { color: '#FFF' }]}>
+                         {isAck ? 'Acknowledged' : 'Pending'}
+                       </Text>
+                    </View>
+                  </View>
+
+                  {/* Time Badge in top right corner as requested */}
+                  <View style={[styles.timeBadge, isCurrent && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Clock color={isCurrent ? '#FFF' : Colors.textSecondary} size={12} style={styles.timeIcon} />
+                    <Text style={[styles.timeText, isCurrent && { color: '#FFF' }]}>{formatTime(entry.submissionTimestamp)}</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
-          </Card>
+          </View>
         ))
       )}
     </ScrollView>
@@ -172,48 +189,95 @@ const styles = StyleSheet.create({
     color: Colors.surface,
     fontWeight: '700',
   },
-  groupCard: {
-    marginBottom: 12,
+  groupWrap: {
+    marginBottom: 24,
   },
   groupTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 10,
+    marginBottom: 12,
+    marginLeft: 4,
+    letterSpacing: -0.2,
   },
-  timelineItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+  pillCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16, // Pill-like radius
     borderWidth: 1,
     borderColor: Colors.border,
-    marginBottom: 8,
-    backgroundColor: Colors.background,
+    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    ...Shadows.soft,
+    position: 'relative',
   },
-  timelineItemCurrent: {
+  pillCardCurrent: {
+    backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-    backgroundColor: '#EAF2FF',
+  },
+  pillIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E9F2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 124, 255, 0.1)',
+  },
+  pillContent: {
+    flex: 1,
   },
   timelineTitle: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
+    marginBottom: 2,
   },
   timelineMeta: {
-    marginTop: 2,
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textSecondary,
+    marginBottom: 6,
+  },
+  statusWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
   },
   timelineAck: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontSize: 13,
+    fontWeight: '600',
   },
   timelineAckYes: {
-    color: '#1E7A43',
+    color: Colors.success,
   },
   timelineAckNo: {
-    color: '#A13A2A',
+    color: Colors.textSecondary, // gray for unacknowledged
+  },
+  timeBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  timeIcon: {
+    marginRight: 4,
+  },
+  timeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textSecondary,
   },
 });

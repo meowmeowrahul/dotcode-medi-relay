@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   Text,
-  TextInput,
   Alert,
   ActivityIndicator,
   TouchableOpacity,
@@ -13,10 +12,12 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Colors } from '../../constants/Theme';
 import { deleteUserProfile, getUserProfile, updateUserProfile } from '../../../ScanImplementation/utils/api';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { UserPlus, CircleUserRound } from 'lucide-react-native';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -38,34 +39,8 @@ export default function ProfileScreen() {
   }, [user]);
 
   useEffect(() => {
-    if (hasLoadedProfile.current) {
-      return;
-    }
-
+    if (hasLoadedProfile.current) return;
     let mounted = true;
-
-    const mergeProfile = (apiProfile, authUser) => {
-      const safeApi = apiProfile || {};
-      const safeAuth = authUser || {};
-      const stableRole = safeAuth.role || authUserRef.current?.role || 'patient';
-
-      const displayName =
-        safeAuth.name ||
-        safeAuth.username ||
-        safeApi.name ||
-        safeApi.username ||
-        '';
-
-      return {
-        ...safeApi,
-        ...safeAuth,
-        name: displayName,
-        username: safeAuth.username || safeApi.username,
-        role: stableRole,
-        hospitalName: safeAuth.hospitalName ?? safeApi.hospitalName ?? '',
-        profileImage: safeApi.profileImage || safeAuth.profileImage || '',
-      };
-    };
 
     const loadProfile = async () => {
       hasLoadedProfile.current = true;
@@ -81,17 +56,27 @@ export default function ProfileScreen() {
         return;
       }
 
-      const next = mergeProfile(result.data, authUserRef.current);
+      const safeApi = result.data || {};
+      const safeAuth = authUserRef.current || {};
+      const stableRole = safeAuth.role || 'patient';
+      const displayName = safeAuth.name || safeAuth.username || safeApi.name || safeApi.username || '';
+
+      const next = {
+        ...safeApi, ...safeAuth,
+        name: displayName,
+        username: safeAuth.username || safeApi.username,
+        role: stableRole,
+        hospitalName: safeAuth.hospitalName ?? safeApi.hospitalName ?? '',
+        profileImage: safeApi.profileImage || safeAuth.profileImage || '',
+      };
+
       setProfile(next);
       setDraft(next);
       await saveAuth(token, next);
     };
 
     loadProfile();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [saveAuth, token]);
 
   const initials = useMemo(() => {
@@ -108,7 +93,6 @@ export default function ProfileScreen() {
     setIsEditing(true);
     setError(null);
   };
-
   const cancelEdit = () => {
     setDraft(profile);
     setIsEditing(false);
@@ -121,14 +105,12 @@ export default function ProfileScreen() {
       Alert.alert('Permission required', 'Please allow photo library access to update profile photo.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.8,
       aspect: [1, 1],
     });
-
     if (!result.canceled && result.assets && result.assets[0]?.uri) {
       setDraft((prev) => ({ ...prev, profileImage: result.assets[0].uri }));
     }
@@ -136,16 +118,12 @@ export default function ProfileScreen() {
 
   const validate = () => {
     const draftName = (draft?.name || draft?.username || '').trim();
-    if (!draftName) {
-      setError('Name cannot be empty.');
-      return false;
-    }
+    if (!draftName) { setError('Name cannot be empty.'); return false; }
     return true;
   };
 
   const handleSave = async () => {
     if (!validate()) return;
-
     setSaving(true);
     setError(null);
 
@@ -184,11 +162,7 @@ export default function ProfileScreen() {
       'Are you sure you want to delete your account? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm Delete',
-          style: 'destructive',
-          onPress: handleDelete,
-        },
+        { text: 'Confirm Delete', style: 'destructive', onPress: handleDelete },
       ]
     );
   };
@@ -196,7 +170,6 @@ export default function ProfileScreen() {
   const handleDelete = async () => {
     setDeleting(true);
     setError(null);
-
     const result = await deleteUserProfile();
     setDeleting(false);
 
@@ -204,7 +177,6 @@ export default function ProfileScreen() {
       setError(result.error || 'Failed to delete account.');
       return;
     }
-
     await logout();
     Alert.alert('Account deleted', 'Your account has been removed.');
     router.replace('/login');
@@ -214,9 +186,39 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Card>
-        <Text style={styles.title}>User Profile</Text>
-        <Text style={styles.subtitle}>Manage your account details securely.</Text>
+      
+      {/* Visual Radar Overaly Wrapper */}
+      <View style={styles.radarWrapper}>
+        <View style={styles.radarOuterRing}></View>
+        <View style={styles.radarInnerRing}></View>
+        
+        {/* Placeholder orbit nodes for Family Circle visual mapping */}
+        {!isDoctor && (
+          <>
+            <View style={[styles.orbitNode, { top: 10, left: '20%' }]}><CircleUserRound color={Colors.textSecondary} size={28} /></View>
+            <View style={[styles.orbitNode, { bottom: 20, right: '20%' }]}><CircleUserRound color={Colors.textSecondary} size={28} /></View>
+            <View style={[styles.addMemberNode, { top: -10, right: '10%' }]}><UserPlus color={Colors.primary} size={20} /></View>
+          </>
+        )}
+
+        <View style={styles.avatarSection}>
+          {current?.profileImage ? (
+            <Image source={{ uri: current.profileImage }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarFallback}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          )}
+          {isEditing && (
+            <TouchableOpacity style={styles.photoButton} onPress={pickImage} activeOpacity={0.8}>
+              <Text style={styles.photoButtonText}>Change Photo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.infoWrapper}>
+        <Text style={styles.title}>Personal Info</Text>
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -224,69 +226,52 @@ export default function ProfileScreen() {
           </View>
         ) : current ? (
           <>
-            <View style={styles.avatarSection}>
-              {current.profileImage ? (
-                <Image source={{ uri: current.profileImage }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarText}>{initials}</Text>
-                </View>
-              )}
-              {isEditing && (
-                <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-                  <Text style={styles.photoButtonText}>Change Photo</Text>
-                </TouchableOpacity>
-              )}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <Input
+                editable={isEditing && !saving && !deleting}
+                value={current.name || current.username || ''}
+                onChangeText={(value) => setDraft((prev) => ({ ...prev, name: value }))}
+                placeholder="Enter your full name"
+                style={[styles.inputSoft, !isEditing && styles.readOnly]}
+              />
             </View>
 
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={[styles.input, !isEditing && styles.inputReadOnly]}
-              editable={isEditing && !saving && !deleting}
-              value={current.name || current.username || ''}
-              onChangeText={(value) => setDraft((prev) => ({ ...prev, name: value }))}
-              placeholder="Enter your full name"
-              placeholderTextColor={Colors.textSecondary}
-            />
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Email / Username</Text>
+              <Input
+                editable={false}
+                value={current.username || ''}
+                placeholder="system-generated"
+                style={[styles.inputSoft, styles.readOnly]}
+              />
+            </View>
 
             {isDoctor && (
-              <>
+              <View style={styles.formGroup}>
                 <Text style={styles.label}>Hospital Name</Text>
-                <TextInput
-                  style={[styles.input, !isEditing && styles.inputReadOnly]}
+                <Input
                   editable={isEditing && !saving && !deleting}
                   value={current.hospitalName || ''}
                   onChangeText={(value) => setDraft((prev) => ({ ...prev, hospitalName: value }))}
                   placeholder="Enter hospital name"
-                  placeholderTextColor={Colors.textSecondary}
+                  style={[styles.inputSoft, !isEditing && styles.readOnly]}
                 />
-              </>
+              </View>
             )}
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {!isEditing ? (
-              <Button
-                title="Edit Profile"
-                onPress={startEdit}
-                style={styles.primaryButton}
-              />
-            ) : (
-              <>
-                <Button
-                  title={saving ? 'Saving...' : 'Save Changes'}
-                  onPress={handleSave}
-                  style={styles.primaryButton}
-                  disabled={saving || deleting}
-                />
-                <Button
-                  title="Cancel"
-                  onPress={cancelEdit}
-                  variant="outline"
-                  style={styles.secondaryButton}
-                />
-              </>
-            )}
+            <View style={styles.buttonStack}>
+              {!isEditing ? (
+                <Button title="Edit Profile" onPress={startEdit} />
+              ) : (
+                <>
+                  <Button title={saving ? 'Saving...' : 'Save Changes'} onPress={handleSave} disabled={saving || deleting} />
+                  <Button title="Cancel" onPress={cancelEdit} variant="outline" />
+                </>
+              )}
+            </View>
 
             <Button
               title={deleting ? 'Deleting...' : 'Delete Account'}
@@ -299,7 +284,7 @@ export default function ProfileScreen() {
         ) : (
           <Text style={styles.errorText}>No profile available.</Text>
         )}
-      </Card>
+      </View>
     </ScrollView>
   );
 }
@@ -307,94 +292,156 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surface, // Clean pure white for the whole page
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  loadingWrap: {
+  radarWrapper: {
+    paddingVertical: 40,
+    backgroundColor: Colors.background, // Soft sky background for the radar section
     alignItems: 'center',
-    paddingVertical: 20,
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    marginBottom: 24,
+  },
+  radarOuterRing: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    borderWidth: 1.5,
+    borderColor: '#D1E4FF',
+    borderStyle: 'dashed',
+  },
+  radarInnerRing: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 1.5,
+    borderColor: '#E5EDFF',
+    borderStyle: 'dashed',
+  },
+  orbitNode: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  addMemberNode: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E9F2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    zIndex: 10,
   },
   avatarImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: Colors.surface,
   },
   avatarFallback: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#D3E8FF',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: Colors.surface,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
   },
   avatarText: {
-    fontSize: 28,
-    color: Colors.primary,
+    fontSize: 32,
+    color: Colors.surface,
     fontWeight: '700',
   },
   photoButton: {
-    marginTop: 10,
+    marginTop: 12,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   photoButtonText: {
     color: Colors.primary,
     fontWeight: '600',
+    fontSize: 13,
+  },
+  infoWrapper: {
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 24,
+    letterSpacing: -0.3,
+  },
+  formGroup: {
+    marginBottom: 8,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textSecondary,
     marginBottom: 6,
     fontWeight: '600',
   },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    marginBottom: 14,
-    fontSize: 16,
-    color: Colors.textPrimary,
-    backgroundColor: Colors.surface,
+  inputSoft: {
+    marginBottom: 8,
+    borderWidth: 0,
+    backgroundColor: Colors.background, // The soft background input mapping
   },
-  inputReadOnly: {
-    backgroundColor: '#F8FAFC',
+  readOnly: {
+    opacity: 0.8,
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    paddingVertical: 20,
   },
   errorText: {
     color: Colors.critical,
     marginBottom: 12,
     fontSize: 14,
   },
-  primaryButton: {
-    marginTop: 4,
-  },
-  secondaryButton: {
-    marginTop: 10,
+  buttonStack: {
+    gap: 12,
+    marginTop: 16,
   },
   deleteButton: {
-    marginTop: 20,
+    marginTop: 32,
     backgroundColor: Colors.critical,
   },
 });
